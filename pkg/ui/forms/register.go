@@ -13,8 +13,8 @@ import (
 
 type Register struct {
 	Name            string `form:"name" validate:"required"`
-	PhoneNumber     string `form:"phone_number" validate:"required"`
-	Password        string `form:"password" validate:"required"`
+	PhoneNumber     string `form:"phone_number" validate:"required,e164"`
+	Password        string `form:"password" validate:"required,min=8"` 
 	ConfirmPassword string `form:"password-confirm" validate:"required,eqfield=Password"`
 	form.Submission
 }

@@ -8,10 +8,18 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
-	"github.com/r-scheele/zero/pkg/services"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// testValidator implements echo.Validator interface for testing
+type testValidator struct {
+	validator *validator.Validate
+}
+
+func (v *testValidator) Validate(i interface{}) error {
+	return v.validator.Struct(i)
+}
 
 func TestFormSubmission(t *testing.T) {
 	type formTest struct {
@@ -21,7 +29,7 @@ func TestFormSubmission(t *testing.T) {
 	}
 
 	e := echo.New()
-	e.Validator = services.NewValidator()
+	e.Validator = &testValidator{validator: validator.New()}
 
 	t.Run("valid request", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("email=a@a.com"))

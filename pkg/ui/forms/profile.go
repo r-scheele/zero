@@ -13,9 +13,9 @@ import (
 
 type Profile struct {
 	Name               string `form:"name" validate:"required"`
-	PhoneNumber        string `form:"phone_number" validate:"required"`
+	PhoneNumber        string `form:"phone_number" validate:"required,e164"`
 	Email              string `form:"email" validate:"omitempty,email"`
-	Bio                string `form:"bio"`
+	Bio                string `form:"bio" validate:"max=500"`
 	DarkMode           bool   `form:"dark_mode"`
 	EmailNotifications bool   `form:"email_notifications"`
 	SmsNotifications   bool   `form:"sms_notifications"`

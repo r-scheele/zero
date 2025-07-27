@@ -1,6 +1,7 @@
 package services
 
 import (
+	"regexp"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -12,9 +13,26 @@ type Validator struct {
 
 // NewValidator creats a new Validator
 func NewValidator() *Validator {
-	return &Validator{
+	v := &Validator{
 		validator: validator.New(),
 	}
+	
+	// Register custom validation for E.164 phone number format
+	v.validator.RegisterValidation("e164", validateE164)
+	
+	return v
+}
+
+// validateE164 validates phone numbers in E.164 format
+func validateE164(fl validator.FieldLevel) bool {
+	phoneNumber := fl.Field().String()
+	if phoneNumber == "" {
+		return true // Allow empty values, use 'required' tag for mandatory fields
+	}
+	
+	// E.164 format: + followed by 1-15 digits
+	matched, _ := regexp.MatchString(`^\+[1-9]\d{1,14}$`, phoneNumber)
+	return matched
 }
 
 // Validate validates a struct

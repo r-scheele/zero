@@ -11,19 +11,18 @@ import (
 	"os"
 	"time"
 
-	"github.com/mikestefanello/backlite"
+	"github.com/r-scheele/zero/config"
 	"github.com/r-scheele/zero/ent"
 	"github.com/spf13/afero"
 )
 
 type APIService struct {
-	orm      *ent.Client
-	auth     *AuthClient
-	cache    *CacheClient
-	files    afero.Fs
-	mail     *MailClient
-	tasks    *backlite.Client
 	whatsapp *WhatsAppAPI
+	User     *UserService
+	Admin    *AdminService
+	File     *FileService
+	Contact  *ContactService
+	JWT      *JWTService
 }
 
 // WhatsAppAPI handles 360dialog WhatsApp integration
@@ -80,54 +79,28 @@ type ReplyButton struct {
 	Title string `json:"title"`
 }
 
-type ProcessMessageRequest struct {
-	PhoneNumber string `json:"phone_number" validate:"required"`
-	MessageID   string `json:"message_id" validate:"required"`
-	Content     string `json:"content" validate:"required"`
-	MessageType string `json:"message_type" validate:"required,oneof=text image voice document"`
-}
 
-type ProcessMessageResponse struct {
-	Success    bool   `json:"success"`
-	Response   string `json:"response"`
-	MessageID  string `json:"message_id"`
-	ActionType string `json:"action_type"` // "reply", "verification", "help"
-}
-
-type UserStatsResponse struct {
-	PhoneNumber  string    `json:"phone_number"`
-	MessageCount int       `json:"message_count"`
-	LastActive   time.Time `json:"last_active"`
-}
-
-func NewAPIService(orm *ent.Client, auth *AuthClient, cache *CacheClient, files afero.Fs, mail *MailClient, tasks *backlite.Client) *APIService {
+func NewAPIService(orm *ent.Client, auth *AuthClient, mail *MailClient, files afero.Fs, config *config.Config) *APIService {
 	// Initialize WhatsApp API with environment variables
 	whatsappAPI := &WhatsAppAPI{
 		baseURL: "https://waba.360dialog.io/v1",
-		apiKey:  getEnvWithDefault("WHATSAPP_API_KEY", ""),
+		apiKey:  os.Getenv("WHATSAPP_API_KEY"),
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
 	}
 
 	return &APIService{
-		orm:      orm,
-		auth:     auth,
-		cache:    cache,
-		files:    files,
-		mail:     mail,
-		tasks:    tasks,
 		whatsapp: whatsappAPI,
+		User:     NewUserService(orm, auth),
+		Admin:    NewAdminService(orm),
+		File:     NewFileService(files),
+		Contact:  NewContactService(mail),
+		JWT:      NewJWTService(config),
 	}
 }
 
-// getEnvWithDefault gets environment variable with default fallback
-func getEnvWithDefault(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
+
 
 // SendWhatsAppMessage sends a simple text message via 360dialog
 func (s *APIService) SendWhatsAppMessage(ctx context.Context, phoneNumber, message string) error {
@@ -157,7 +130,22 @@ func (s *APIService) SendVerificationMessage(ctx context.Context, phoneNumber, u
 	}
 
 	// Generate 3 different codes including the correct one
-	buttonCodes := s.generateThreeButtonCodes(verificationCode)
+	buttonCodes := []string{verificationCode}
+	used := map[string]bool{verificationCode: true}
+	
+	for len(buttonCodes) < 3 {
+		newCode := s.generateTwoDigitCode()
+		if !used[newCode] {
+			buttonCodes = append(buttonCodes, newCode)
+			used[newCode] = true
+		}
+	}
+	
+	// Shuffle the codes so the correct one isn't always first
+	for i := len(buttonCodes) - 1; i > 0; i-- {
+		j := rand.Intn(i + 1)
+		buttonCodes[i], buttonCodes[j] = buttonCodes[j], buttonCodes[i]
+	}
 
 	message := WhatsAppMessage{
 		To:   phoneNumber,
@@ -327,50 +315,7 @@ func (w *WhatsAppAPI) sendMessage(ctx context.Context, message WhatsAppMessage) 
 	return nil
 }
 
-func (s *APIService) ProcessMessage(ctx context.Context, req ProcessMessageRequest) (*ProcessMessageResponse, error) {
-	// For now, just return a basic response until we have the database schemas
-	response := s.generateResponse(req.Content, req.MessageType)
-	response.Success = true
-	response.MessageID = fmt.Sprintf("resp_%s_%d", req.MessageID, time.Now().Unix())
-
-	return response, nil
-}
-
-func (s *APIService) GetUserStats(ctx context.Context, phoneNumber string) (*UserStatsResponse, error) {
-	// Return basic stats until we have the database schemas
-	return &UserStatsResponse{
-		PhoneNumber:  phoneNumber,
-		MessageCount: 0,
-		LastActive:   time.Now(),
-	}, nil
-}
-
-func (s *APIService) GetConversationHistory(ctx context.Context, phoneNumber string, limit int) ([]map[string]interface{}, error) {
-	// Return empty history until we have the database schemas
-	return []map[string]interface{}{}, nil
-}
-
-func (s *APIService) generateResponse(content, messageType string) *ProcessMessageResponse {
-	response := &ProcessMessageResponse{}
-
-	switch {
-	case content == "/help":
-		response.Response = `🤖 Zero Bot Commands:
-
-/help - Show this help
-/verify - Verify your account
-
-Welcome to Zero! Send me a message to get started. 📱`
-		response.ActionType = "reply"
-
-	default:
-		// Basic echo for now - will be enhanced with AI processing
-		response.Response = fmt.Sprintf("I received your %s message. Processing...", messageType)
-		response.ActionType = "reply"
-	}
-
-	return response
-}
+// Removed placeholder functions that are not currently implemented
 
 // generateTwoDigitCode generates a random 2-digit verification code (10-99)
 func (s *APIService) generateTwoDigitCode() string {
@@ -378,24 +323,4 @@ func (s *APIService) generateTwoDigitCode() string {
 	return fmt.Sprintf("%02d", code)
 }
 
-// generateThreeButtonCodes generates 3 different 2-digit codes including the correct one
-func (s *APIService) generateThreeButtonCodes(correctCode string) []string {
-	codes := []string{correctCode}
-	used := map[string]bool{correctCode: true}
-
-	for len(codes) < 3 {
-		newCode := s.generateTwoDigitCode()
-		if !used[newCode] {
-			codes = append(codes, newCode)
-			used[newCode] = true
-		}
-	}
-
-	// Shuffle the codes so the correct one isn't always first
-	for i := len(codes) - 1; i > 0; i-- {
-		j := rand.Intn(i + 1)
-		codes[i], codes[j] = codes[j], codes[i]
-	}
-
-	return codes
-}
+// Removed unused generateThreeButtonCodes function

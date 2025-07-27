@@ -11,7 +11,7 @@ import (
 )
 
 type ResetPassword struct {
-	Password        string `form:"password" validate:"required"`
+	Password        string `form:"password" validate:"required,min=8"`
 	ConfirmPassword string `form:"password-confirm" validate:"required,eqfield=Password"`
 	form.Submission
 }
@@ -33,7 +33,7 @@ func (f *ResetPassword) Render(r *ui.Request) Node {
 		}),
 		InputField(InputFieldParams{
 			Form:        f,
-			FormField:   "PasswordConfirm",
+			FormField:   "ConfirmPassword",
 			Name:        "password-confirm",
 			InputType:   "password",
 			Label:       "Confirm password",

@@ -265,6 +265,6 @@ func openDB(driver, connection string) (*sql.DB, error) {
 }
 
 func (c *Container) initAPI() {
-	// Initialize the API service.
-	c.API = NewAPIService(c.ORM, c.Auth, c.Cache, c.Files, c.Mail, c.Tasks)
+	// Initialize API service
+	c.API = NewAPIService(c.ORM, c.Auth, c.Mail, c.Files, c.Config)
 }

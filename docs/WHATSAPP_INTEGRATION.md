@@ -37,7 +37,7 @@ This prevents unauthorized verification attempts and ensures the user has access
 
 ## API Integration
 
-### Core Services (pkg/services/api.go)
+### Core Services (pkg/services/whatsapp.go)
 
 The `APIService` provides comprehensive WhatsApp functionality:
 

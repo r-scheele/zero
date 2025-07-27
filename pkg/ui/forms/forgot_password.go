@@ -12,7 +12,7 @@ import (
 )
 
 type ForgotPassword struct {
-	PhoneNumber string `form:"phone_number" validate:"required"`
+	PhoneNumber string `form:"phone_number" validate:"required,e164"`
 	form.Submission
 }
 

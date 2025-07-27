@@ -95,6 +95,14 @@ func (f *Submission) setErrorMessages(err error) {
 			message = "Does not match."
 		case "gte":
 			message = fmt.Sprintf("Must be greater than or equal to %v.", ve.Param())
+		case "e164":
+			message = "Enter a valid phone number in international format (e.g., +1234567890)."
+		case "oneof":
+			message = "Please select a valid option."
+		case "min":
+			message = fmt.Sprintf("Must be at least %v characters.", ve.Param())
+		case "max":
+			message = fmt.Sprintf("Must be no more than %v characters.", ve.Param())
 		default:
 			message = "Invalid value."
 		}
