@@ -1,0 +1,6 @@
+{
+  "name": "zero",
+  "dependencies": {
+    "daisyui": "^5.0.46"
+  }
+}

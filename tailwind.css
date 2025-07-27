@@ -1,0 +1,191 @@
+@import "tailwindcss" source(none);
+@plugin "@tailwindcss/typography";
+@source "./pkg/ui/**/*.{go}";
+@plugin "daisyui";
+
+/* Custom modern styling */
+@layer base {
+  /* Import Inter font for better typography */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+  
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    font-size: 16px; /* Base font size for better readability */
+  }
+  
+  body {
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.6; /* Better line height for readability */
+  }
+}
+
+@layer components {
+  /* Auth page specific styles */
+  .auth-no-scroll {
+    overflow: hidden;
+    height: 100vh;
+  }
+  
+  /* Gen Z style animations */
+  .bounce-gentle {
+    animation: bounceGentle 2s ease-in-out infinite;
+  }
+  
+  .float-up-down {
+    animation: floatUpDown 3s ease-in-out infinite;
+  }
+  
+  .pulse-soft {
+    animation: pulseSoft 2s ease-in-out infinite;
+  }
+  
+  @keyframes bounceGentle {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  @keyframes floatUpDown {
+    0%, 100% { transform: translateY(0px); opacity: 0.6; }
+    50% { transform: translateY(-15px); opacity: 1; }
+  }
+  
+  @keyframes pulseSoft {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.05); opacity: 1; }
+  }
+  
+  /* Modern glass-morphism effects */
+  .glass-header {
+    backdrop-filter: blur(20px);
+    background: rgba(255, 255, 255, 0.85);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  }
+  
+  .glass-footer {
+    backdrop-filter: blur(20px);
+    background: rgba(255, 255, 255, 0.85);
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 -1px 3px 0 rgba(0, 0, 0, 0.1), 0 -1px 2px 0 rgba(0, 0, 0, 0.06);
+  }
+  
+  .glass-sidebar {
+    backdrop-filter: blur(20px);
+    background: rgba(255, 255, 255, 0.95);
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  /* Modern button styles */
+  .btn-modern-primary {
+    @apply px-6 py-3 rounded-xl text-white font-semibold;
+    @apply bg-gradient-to-r from-indigo-600 to-purple-600;
+    @apply hover:from-indigo-700 hover:to-purple-700;
+    @apply shadow-lg hover:shadow-xl;
+    @apply font-medium tracking-wide transition-all duration-200 ease-out;
+    @apply hover:scale-105 active:scale-95;
+    min-height: 48px; /* Better touch target for accessibility */
+    font-size: 16px; /* Prevent zoom on mobile */
+  }
+  
+  .btn-modern-secondary {
+    @apply px-6 py-3 rounded-xl font-semibold;
+    @apply bg-slate-100 text-slate-700 border border-slate-200;
+    @apply hover:bg-slate-200 hover:border-slate-300;
+    @apply shadow-sm hover:shadow-md;
+    @apply font-medium tracking-wide transition-all duration-200 ease-out;
+    @apply hover:scale-105 active:scale-95;
+    min-height: 48px; /* Better touch target for accessibility */
+    font-size: 16px; /* Prevent zoom on mobile */
+  }
+  
+  /* Form field improvements for better readability */
+  .input, .textarea, .select {
+    min-height: 48px; /* Better touch targets */
+    font-size: 16px; /* Prevent zoom on mobile */
+    line-height: 1.5;
+    padding: 12px 16px;
+  }
+  
+  .fieldset {
+    margin-bottom: 24px; /* Better spacing between form fields */
+  }
+  
+  .fieldset-legend {
+    font-size: 14px; /* Readable label size */
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: rgb(51 65 85); /* slate-700 */
+  }
+  
+  .label {
+    font-size: 14px; /* Consistent helper text size */
+    line-height: 1.4;
+    color: rgb(100 116 139); /* slate-500 */
+  }
+  
+  /* Typography improvements for better readability */
+  h1 {
+    font-size: clamp(1.875rem, 5vw, 2.25rem); /* Responsive sizing */
+    line-height: 1.2;
+    font-weight: 700;
+  }
+  
+  h2 {
+    font-size: clamp(1.5rem, 4vw, 1.875rem);
+    line-height: 1.3;
+    font-weight: 700;
+  }
+  
+  h3 {
+    font-size: clamp(1.25rem, 3vw, 1.5rem);
+    line-height: 1.4;
+    font-weight: 600;
+  }
+  
+  p {
+    font-size: 16px; /* Readable body text */
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+  
+  /* Card improvements */
+  .card {
+    padding: clamp(1.5rem, 4vw, 2rem); /* Responsive padding */
+  }
+  
+  /* Glass card with improved contrast */
+  .glass-card {
+    backdrop-filter: blur(20px);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  }
+  
+  /* Auth page specific styles for better centering */
+  .auth-container {
+    min-height: calc(100vh - 200px); /* Account for header and footer with more buffer */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 4rem; /* Extra top spacing */
+    padding-bottom: 4rem; /* Extra bottom spacing */
+  }
+  
+  .auth-card {
+    width: 100%;
+    max-width: 28rem; /* 448px */
+    margin: 0 auto;
+  }
+  
+  /* Elegant shadows */
+  .shadow-elegant {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+  
+  .shadow-elegant-lg {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+}

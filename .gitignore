@@ -1,0 +1,100 @@
+# IDE and Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Database files
+dbs/
+*.db
+*.sqlite
+*.sqlite3
+
+# Upload directories
+uploads/
+
+# Build and temporary files
+tmp/
+build/
+dist/
+
+# Project binaries
+
+./admin
+./web
+
+# Tailwind CSS binary (if downloaded manually)
+tailwindcss
+daisyui*
+
+# Go specific
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+main
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.html
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Node.js dependencies (for DaisyUI and other frontend tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Log files
+*.log
+logs/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Backup files
+*.bak
+*.backup
+*.orig
+
+# Air (live reload) files
+.air.toml
+tmp/
+
+# Generated CSS (if you want to rebuild it)
+# public/static/main.css
+
+# Session files
+sessions/
+
+# Cache directories
+.cache/
+*.cache
