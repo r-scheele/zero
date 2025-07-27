@@ -37,12 +37,7 @@ func About(ctx echo.Context) error {
 						// Main heading
 						H1(
 							Class("text-5xl sm:text-6xl lg:text-7xl font-black text-white mb-8 leading-tight"),
-							Text("Built for the "),
-							Br(),
-							Span(
-								Class("bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent"),
-								Text("Next Generation"),
-							),
+							Text("About Zero"),
 						),
 						// Subheading
 						P(

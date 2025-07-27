@@ -274,22 +274,34 @@ func userSidebar(r *ui.Request) Node {
 						Class("space-y-2 flex flex-col h-full flex-1"),
 						Style("list-style: none !important; padding: 0 !important; margin: 0 !important; font-size: inherit !important;"),
 						HxBoost(),
-						// Main navigation items
-						Div(
-							Class("space-y-2"),
-							userMenuItem(icons.Home(), "Home", "/"),
-					userMenuItem(icons.CircleStack(), "Dashboard", "/dashboard"),
-					userMenuItem(icons.Star(), "Quizzes", "/quizzes"),
-				userMenuItem(icons.Archive(), "Notes", "/summaries"),
-				userMenuItem(icons.UserCircle(), "Profile", "/profile"),
-				userMenuItem(icons.Document(), "Files", "/files"), // Use direct path
+						// Main navigation items - show only Home if user is not verified
+						If(r.AuthUser != nil && !r.AuthUser.Verified,
+							// Unverified user - only show Home
+							Div(
+								Class("space-y-2"),
+								userMenuItem(icons.Home(), "Home", "/"),
+							),
 						),
-						// Visual separator line after regular nav items
-						Div(
-							Class("my-4 border-t border-slate-200"),
+						If(r.AuthUser != nil && r.AuthUser.Verified,
+							// Verified user - show all navigation items
+							Div(
+								Class("space-y-2"),
+								userMenuItem(icons.Home(), "Home", "/"),
+								userMenuItem(icons.CircleStack(), "Dashboard", "/dashboard"),
+								userMenuItem(icons.Star(), "Quizzes", "/quizzes"),
+								userMenuItem(icons.Archive(), "Notes", "/summaries"),
+								userMenuItem(icons.UserCircle(), "Profile", "/profile"),
+								userMenuItem(icons.Document(), "Files", "/files"), // Use direct path
+							),
 						),
-						// Admin section (if admin)
-						If(r.IsAdmin,
+						// Visual separator line after regular nav items - only for verified users
+						If(r.AuthUser != nil && r.AuthUser.Verified,
+							Div(
+								Class("my-4 border-t border-slate-200"),
+							),
+						),
+						// Admin section (if admin and verified)
+						If(r.IsAdmin && r.AuthUser != nil && r.AuthUser.Verified,
 							Div(
 								Class("space-y-2"),
 								header("⚙️ Admin Tools"),
@@ -303,7 +315,7 @@ func userSidebar(r *ui.Request) Node {
 							Class("flex-grow"),
 							Style("min-height: calc(100vh - 400px); min-height: calc(100svh - 400px);"), // Maximize space to push button to bottom
 						),
-						// Sign Out at the absolute bottom with visual separation
+						// Sign Out at the absolute bottom with visual separation - always show for authenticated users
 						Div(
 							Class("mt-auto pt-6 border-t border-slate-200"),
 							Style("position: absolute; bottom: 0; left: 0; right: 0; background: white; padding: 1.5rem; border-top: 1px solid rgb(226 232 240);"), // Absolute positioning at bottom
@@ -371,12 +383,21 @@ func userBottomNavigation(r *ui.Request) Node {
 			Class("max-w-md mx-auto"),
 			Div(
 				Class("flex items-center justify-around"),
-				userNavItem(icons.Home(), "Home", "/"),
-				userNavItem(icons.CircleStack(), "Dashboard", "/dashboard"),
-				userNavItem(icons.Star(), "Quizzes", "/quizzes"),
-				userNavItem(icons.Archive(), "Notes", "/summaries"),
-				// More button to show additional nav items - highlight when viewing any "More" section pages
-				func() Node {
+				// Show only Home for unverified users
+				If(r.AuthUser != nil && !r.AuthUser.Verified,
+					userNavItem(icons.Home(), "Home", "/"),
+				),
+				// Show all nav items for verified users
+				If(r.AuthUser != nil && r.AuthUser.Verified, Group{
+					userNavItem(icons.Home(), "Home", "/"),
+					userNavItem(icons.CircleStack(), "Dashboard", "/dashboard"),
+					userNavItem(icons.Star(), "Quizzes", "/quizzes"),
+					userNavItem(icons.Archive(), "Notes", "/summaries"),
+				}),
+				// More button for verified users only
+				If(r.AuthUser != nil && r.AuthUser.Verified,
+					// More button to show additional nav items - highlight when viewing any "More" section pages
+					func() Node {
 					// Check if current page is in the "More" section
 					isMoreActive := r.CurrentPath == "/profile" || r.CurrentPath == "/files" ||
 						strings.HasPrefix(r.CurrentPath, "/profile/") ||
@@ -419,6 +440,7 @@ func userBottomNavigation(r *ui.Request) Node {
 						),
 					)
 				}(),
+				),
 			),
 		),
 	)

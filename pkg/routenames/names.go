@@ -28,6 +28,7 @@ const (
 	VerifyEmail           = "verify_email"
 	VerificationNotice    = "verification_notice"
 	ResendVerification    = "resend_verification"
+
 	ResetPassword         = "reset_password"
 	ResetPasswordSubmit   = "reset_password.submit"
 	Search                = "search"

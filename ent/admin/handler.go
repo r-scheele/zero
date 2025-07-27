@@ -262,6 +262,7 @@ func (h *Handler) UserUpdate(ctx echo.Context, id int) error {
 	op.SetSmsNotifications(payload.SmsNotifications)
 	op.SetIsActive(payload.IsActive)
 	op.SetNillableLastLogin(payload.LastLogin)
+	// Note: updated_at is automatically managed by Ent's UpdateDefault
 	_, err = op.Save(ctx.Request().Context())
 	return err
 }
@@ -273,25 +274,8 @@ func (h *Handler) UserDelete(ctx echo.Context, id int) error {
 
 func (h *Handler) UserList(ctx echo.Context) (*EntityList, error) {
 	page, offset := h.getPageAndOffset(ctx)
-	
-	// Get search query parameter
-	searchQuery := ctx.QueryParam("search")
-	
-	// Build the query
-	query := h.client.User.Query()
-	
-	// Apply search filters if search query is provided
-	if searchQuery != "" {
-		query = query.Where(
-			user.Or(
-				user.NameContainsFold(searchQuery),
-				user.PhoneNumberContainsFold(searchQuery),
-				user.EmailContainsFold(searchQuery),
-			),
-		)
-	}
-	
-	res, err := query.
+	res, err := h.client.User.
+		Query().
 		Limit(h.Config.ItemsPerPage + 1).
 		Offset(offset).
 		Order(user.ByID(sql.OrderDesc())).
@@ -428,7 +412,6 @@ func (h *Handler) UserGet(ctx echo.Context, id int) (url.Values, error) {
 		}
 		return ""
 	}())
-	v.Set("created_at", entity.CreatedAt.Format(dateTimeFormat))
 	v.Set("updated_at", func() string {
 		if entity.UpdatedAt != nil {
 			return entity.UpdatedAt.Format(dateTimeFormat)

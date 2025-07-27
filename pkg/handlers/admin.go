@@ -85,6 +85,10 @@ func (h *Admin) Routes(g *echo.Group) {
 			Name = routenames.AdminEntityDeleteSubmit(n.Name)
 	}
 
+	// User-specific admin actions
+	userGroup := ag.Group("/user")
+	userGroup.POST("/:id/verify", h.VerifyUser)
+
 	tasks := ag.Group("/tasks")
 	tasks.GET("", h.AdminTasks).Name = routenames.AdminTasks
 	tasks.GET("/succeeded", h.Backlite(h.backlite.Succeeded))
@@ -239,6 +243,28 @@ func (h *Admin) getEntitySchema(n *gen.Type) *load.Schema {
 		}
 	}
 	return nil
+}
+
+// VerifyUser handles POST /admin/user/:id/verify to manually verify a user account
+func (h *Admin) VerifyUser(ctx echo.Context) error {
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid user ID")
+	}
+
+	// Update user as verified and clear verification code
+	_, err = h.orm.User.UpdateOneID(id).
+		SetVerified(true).
+		ClearVerificationCode().
+		Save(ctx.Request().Context())
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return echo.NewHTTPError(http.StatusNotFound, "user not found")
+		}
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to verify user")
+	}
+
+	return ctx.JSON(http.StatusOK, map[string]string{"status": "success", "message": "User verified successfully"})
 }
 
 func (h *Admin) Backlite(handler func(http.ResponseWriter, *http.Request) error) echo.HandlerFunc {

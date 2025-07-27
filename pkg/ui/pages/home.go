@@ -195,24 +195,35 @@ func authenticatedHomePage(r *ui.Request, posts *models.Posts) error {
 				Class("flex items-center justify-between pt-2 border-t border-gray-100"),
 				Div(
 					Class("flex gap-4"),
-					A(
-					Href("/summaries/create"),
-					Class("flex items-center gap-2 px-3 py-2 rounded-lg text-gray-600 hover:text-amber-700 hover:bg-amber-50 transition-all duration-200"),
-					Span(Class("text-lg"), Text("📝")),
-					Span(Class("font-medium"), Text("Note")),
-				),
-				A(
-					Href("/quizzes/create"),
-					Class("flex items-center gap-2 px-3 py-2 rounded-lg text-gray-600 hover:text-blue-700 hover:bg-blue-50 transition-all duration-200"),
-					Span(Class("text-lg"), Text("🧠")),
-					Span(Class("font-medium"), Text("Quiz")),
-				),
-				A(
-					Href("/files"),
-					Class("flex items-center gap-2 px-3 py-2 rounded-lg text-gray-600 hover:text-emerald-700 hover:bg-emerald-50 transition-all duration-200"),
-					Span(Class("text-lg"), Text("📄")),
-					Span(Class("font-medium"), Text("File")),
-				),
+					// Only show action buttons for verified users
+					If(r.AuthUser != nil && r.AuthUser.Verified, Group{
+						A(
+							Href("/summaries/create"),
+							Class("flex items-center gap-2 px-3 py-2 rounded-lg text-gray-600 hover:text-amber-700 hover:bg-amber-50 transition-all duration-200"),
+							Span(Class("text-lg"), Text("📝")),
+							Span(Class("font-medium"), Text("Note")),
+						),
+						A(
+							Href("/quizzes/create"),
+							Class("flex items-center gap-2 px-3 py-2 rounded-lg text-gray-600 hover:text-blue-700 hover:bg-blue-50 transition-all duration-200"),
+							Span(Class("text-lg"), Text("🧠")),
+							Span(Class("font-medium"), Text("Quiz")),
+						),
+						A(
+							Href("/files"),
+							Class("flex items-center gap-2 px-3 py-2 rounded-lg text-gray-600 hover:text-emerald-700 hover:bg-emerald-50 transition-all duration-200"),
+							Span(Class("text-lg"), Text("📄")),
+							Span(Class("font-medium"), Text("File")),
+						),
+					}),
+					// Show verification message for unverified users
+					If(r.AuthUser != nil && !r.AuthUser.Verified,
+						Div(
+							Class("flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-700"),
+							Span(Class("text-lg"), Text("⚠️")),
+							Span(Class("font-medium text-sm"), Text("Please verify your account to access creation tools")),
+						),
+					),
 				),
 			),
 		),
@@ -342,9 +353,19 @@ func authenticatedHomePage(r *ui.Request, posts *models.Posts) error {
 						Span(Class("text-sm"), Text("Share")),
 					),
 				),
-				Button(
-					Class("bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md"),
-					Text("Take Quiz"),
+				// Only show Take Quiz button for verified users
+				If(r.AuthUser != nil && r.AuthUser.Verified,
+					Button(
+						Class("bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md"),
+						Text("Take Quiz"),
+					),
+				),
+				// Show verification message for unverified users
+				If(r.AuthUser != nil && !r.AuthUser.Verified,
+					Div(
+						Class("bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-2 rounded-lg text-sm font-medium"),
+						Text("⚠️ Verify account to take quizzes"),
+					),
 				),
 			),
 		),
@@ -390,9 +411,19 @@ func authenticatedHomePage(r *ui.Request, posts *models.Posts) error {
 						P(Class("font-semibold text-emerald-800"), Text("ML_CheatSheet_2024.pdf")),
 						P(Class("text-sm text-emerald-600 font-medium"), Text("2.4 MB • PDF Document")),
 					),
-					Button(
-						Class("bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md"),
-						Text("Download"),
+					// Only show Download button for verified users
+					If(r.AuthUser != nil && r.AuthUser.Verified,
+						Button(
+							Class("bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md"),
+							Text("Download"),
+						),
+					),
+					// Show verification message for unverified users
+					If(r.AuthUser != nil && !r.AuthUser.Verified,
+						Div(
+							Class("bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-2 rounded-lg text-sm font-medium"),
+							Text("⚠️ Verify account to download files"),
+						),
 					),
 				),
 			),
@@ -480,9 +511,19 @@ func authenticatedHomePage(r *ui.Request, posts *models.Posts) error {
 						Span(Class("text-sm"), Text("Share")),
 					),
 				),
-				Button(
-					Class("bg-pink-600 hover:bg-pink-700 text-white px-4 py-1 rounded-full text-sm transition-colors"),
-					Text("Join Group"),
+				// Only show Join Group button for verified users
+				If(r.AuthUser != nil && r.AuthUser.Verified,
+					Button(
+						Class("bg-pink-600 hover:bg-pink-700 text-white px-4 py-1 rounded-full text-sm transition-colors"),
+						Text("Join Group"),
+					),
+				),
+				// Show verification message for unverified users
+				If(r.AuthUser != nil && !r.AuthUser.Verified,
+					Div(
+						Class("bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-1 rounded-full text-sm font-medium"),
+						Text("⚠️ Verify account to join groups"),
+					),
 				),
 			),
 		),
@@ -542,87 +583,104 @@ func authenticatedDashboard(r *ui.Request, posts *models.Posts) error {
 	cards := func() Node {
 		return Div(
 			Class("space-y-6"),
-			// Quick Actions Grid
-			Div(
-				Class("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"),
-				// Create Note Card
-				A(
-					Href("/summaries/create"),
-					Class("block bg-white p-6 rounded-lg border-l-4 border-l-amber-400 border-t border-r border-b border-gray-200 hover:border-amber-300 hover:shadow-lg hover:shadow-amber-500/20 transition-all duration-200"),
-					Div(
-						Class("flex items-center gap-4"),
+			// Quick Actions Grid - Only show for verified users
+			If(r.AuthUser != nil && r.AuthUser.Verified,
+				Div(
+					Class("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"),
+					// Create Note Card
+					A(
+						Href("/summaries/create"),
+						Class("block bg-white p-6 rounded-lg border-l-4 border-l-amber-400 border-t border-r border-b border-gray-200 hover:border-amber-300 hover:shadow-lg hover:shadow-amber-500/20 transition-all duration-200"),
 						Div(
-							Class("w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center"),
-							Span(Class("text-amber-600 text-xl"), Text("📝")),
+							Class("flex items-center gap-4"),
+							Div(
+								Class("w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center"),
+								Span(Class("text-amber-600 text-xl"), Text("📝")),
+							),
+							Div(
+								H3(Class("font-semibold text-gray-900"), Text("Create Note")),
+								P(Class("text-sm text-amber-600 font-medium"), Text("Write and organize notes")),
+							),
 						),
+					),
+					// Create Quiz Card
+					A(
+						Href("/quiz/create"),
+						Class("block bg-white p-6 rounded-lg border-l-4 border-l-blue-400 border-t border-r border-b border-gray-200 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-200"),
 						Div(
-							H3(Class("font-semibold text-gray-900"), Text("Create Note")),
-							P(Class("text-sm text-amber-600 font-medium"), Text("Write and organize notes")),
+							Class("flex items-center gap-4"),
+							Div(
+								Class("w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center"),
+								Span(Class("text-blue-600 text-xl"), Text("🧠")),
+							),
+							Div(
+								H3(Class("font-semibold text-gray-900"), Text("Create Quiz")),
+								P(Class("text-sm text-blue-600 font-medium"), Text("Build interactive quizzes")),
+							),
+						),
+					),
+					// Upload Documents Card
+					A(
+						Href("/documents/upload"),
+						Class("block bg-white p-6 rounded-lg border-l-4 border-l-emerald-400 border-t border-r border-b border-gray-200 hover:border-emerald-300 hover:shadow-lg hover:shadow-emerald-500/20 transition-all duration-200"),
+						Div(
+							Class("flex items-center gap-4"),
+							Div(
+								Class("w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center"),
+								Span(Class("text-emerald-600 text-xl"), Text("📄")),
+							),
+							Div(
+								H3(Class("font-semibold text-gray-900"), Text("Upload Files")),
+								P(Class("text-sm text-emerald-600 font-medium"), Text("Manage your documents")),
+							),
+						),
+					),
+					// Study Group Session Card
+					A(
+						Href("/study-groups"),
+						Class("block bg-white p-6 rounded-lg border-l-4 border-l-pink-400 border-t border-r border-b border-gray-200 hover:border-pink-300 hover:shadow-lg hover:shadow-pink-500/20 transition-all duration-200"),
+						Div(
+							Class("flex items-center gap-4"),
+							Div(
+								Class("w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center"),
+								Span(Class("text-pink-600 text-xl"), Text("👥")),
+							),
+							Div(
+								H3(Class("font-semibold text-gray-900"), Text("Study Groups")),
+								P(Class("text-sm text-pink-600 font-medium"), Text("Join collaborative sessions")),
+							),
+						),
+					),
+					// View Progress Card
+					A(
+						Href("/progress"),
+						Class("block bg-white p-6 rounded-lg border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all"),
+						Div(
+							Class("flex items-center gap-4"),
+							Div(
+								Class("w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center"),
+								Span(Class("text-purple-600 text-xl"), Text("📊")),
+							),
+							Div(
+								H3(Class("font-semibold text-gray-900"), Text("View Progress")),
+								P(Class("text-sm text-gray-500"), Text("Track your learning")),
+							),
 						),
 					),
 				),
-				// Create Quiz Card
-				A(
-					Href("/quiz/create"),
-					Class("block bg-white p-6 rounded-lg border-l-4 border-l-blue-400 border-t border-r border-b border-gray-200 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-200"),
+			),
+			// Show verification message for unverified users
+			If(r.AuthUser != nil && !r.AuthUser.Verified,
+				Div(
+					Class("bg-yellow-50 border border-yellow-200 rounded-lg p-6"),
 					Div(
-						Class("flex items-center gap-4"),
+						Class("text-center"),
 						Div(
-							Class("w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center"),
-							Span(Class("text-blue-600 text-xl"), Text("🧠")),
+							Class("w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4"),
+							Span(Class("text-yellow-600 text-2xl"), Text("⚠️")),
 						),
-						Div(
-							H3(Class("font-semibold text-gray-900"), Text("Create Quiz")),
-							P(Class("text-sm text-blue-600 font-medium"), Text("Build interactive quizzes")),
-						),
-					),
-				),
-				// Upload Documents Card
-				A(
-					Href("/documents/upload"),
-					Class("block bg-white p-6 rounded-lg border-l-4 border-l-emerald-400 border-t border-r border-b border-gray-200 hover:border-emerald-300 hover:shadow-lg hover:shadow-emerald-500/20 transition-all duration-200"),
-					Div(
-						Class("flex items-center gap-4"),
-						Div(
-							Class("w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center"),
-							Span(Class("text-emerald-600 text-xl"), Text("📄")),
-						),
-						Div(
-							H3(Class("font-semibold text-gray-900"), Text("Upload Files")),
-							P(Class("text-sm text-emerald-600 font-medium"), Text("Manage your documents")),
-						),
-					),
-				),
-				// Study Group Session Card
-				A(
-					Href("/study-groups"),
-					Class("block bg-white p-6 rounded-lg border-l-4 border-l-pink-400 border-t border-r border-b border-gray-200 hover:border-pink-300 hover:shadow-lg hover:shadow-pink-500/20 transition-all duration-200"),
-					Div(
-						Class("flex items-center gap-4"),
-						Div(
-							Class("w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center"),
-							Span(Class("text-pink-600 text-xl"), Text("👥")),
-						),
-						Div(
-							H3(Class("font-semibold text-gray-900"), Text("Study Groups")),
-							P(Class("text-sm text-pink-600 font-medium"), Text("Join collaborative sessions")),
-						),
-					),
-				),
-				// View Progress Card
-				A(
-					Href("/progress"),
-					Class("block bg-white p-6 rounded-lg border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all"),
-					Div(
-						Class("flex items-center gap-4"),
-						Div(
-							Class("w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center"),
-							Span(Class("text-purple-600 text-xl"), Text("📊")),
-						),
-						Div(
-							H3(Class("font-semibold text-gray-900"), Text("View Progress")),
-							P(Class("text-sm text-gray-500"), Text("Track your learning")),
-						),
+						H3(Class("text-lg font-semibold text-yellow-800 mb-2"), Text("Account Verification Required")),
+					P(Class("text-yellow-700 mb-4"), Text("Please contact an administrator to verify your account and access creation tools, quizzes, file downloads, and study groups.")),
 					),
 				),
 			),

@@ -320,16 +320,9 @@ func (h *Profile) ChangePasswordSubmit(ctx echo.Context) error {
 		return h.ChangePasswordPage(ctx)
 	}
 
-	// Hash new password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.NewPassword), bcrypt.DefaultCost)
-	if err != nil {
-		msg.Error(ctx, "Failed to update password. Please try again.")
-		return h.ChangePasswordPage(ctx)
-	}
-
-	// Update password in database
+	// Update password in database (User schema hook will handle hashing)
 	_, err = h.orm.User.UpdateOneID(u.ID).
-		SetPassword(string(hashedPassword)).
+		SetPassword(input.NewPassword).
 		Save(ctx.Request().Context())
 	if err != nil {
 		msg.Error(ctx, "Failed to update password. Please try again.")

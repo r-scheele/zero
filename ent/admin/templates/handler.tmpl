@@ -130,7 +130,11 @@
                             op.Set{{ fieldName $f.Name }}(*payload.{{ fieldName $f.Name }})
                         }
                     {{- else if $f.Nillable }}
-                        op.SetNillable{{ fieldName $f.Name }}(payload.{{ fieldName $f.Name }})
+                        {{- if $f.UpdateDefault }}
+                            // Note: {{ $f.Name }} is automatically managed by Ent's UpdateDefault
+                        {{- else }}
+                            op.SetNillable{{ fieldName $f.Name }}(payload.{{ fieldName $f.Name }})
+                        {{- end }}
                     {{- else if $f.Optional }}
                         if payload.{{ fieldName $f.Name }} == nil {
                             op.Clear{{ fieldName $f.Name }}()
@@ -190,8 +194,22 @@
                     Values: []string{
                     {{- range $f := $n.Fields }}
                         {{- if not $f.Sensitive }}
-                            {{- if eq $f.Type.String "string" }}
+                            {{- if and (eq $f.Type.String "string") $f.Nillable }}
+                                func() string {
+                                    if res[i].{{ fieldName $f.Name }} != nil {
+                                        return *res[i].{{ fieldName $f.Name }}
+                                    }
+                                    return ""
+                                }(),
+                            {{- else if eq $f.Type.String "string" }}
                                 res[i].{{ fieldName $f.Name }},
+                            {{- else if and (eq $f.Type.String "time.Time") $f.Nillable }}
+                                func() string {
+                                    if res[i].{{ fieldName $f.Name }} != nil {
+                                        return res[i].{{ fieldName $f.Name }}.Format(h.Config.TimeFormat)
+                                    }
+                                    return ""
+                                }(),
                             {{- else if eq $f.Type.String "time.Time" }}
                                 res[i].{{ fieldName $f.Name }}.Format(h.Config.TimeFormat),
                             {{- else }}
@@ -215,8 +233,22 @@
             v := url.Values{}
             {{- range $f := $n.Fields }}
                 {{- if and (not $f.Sensitive) (not $f.Immutable) }}
-                    {{- if eq $f.Type.String "string" }}
+                    {{- if and (eq $f.Type.String "string") $f.Nillable }}
+                        v.Set("{{ $f.Name }}", func() string {
+                            if entity.{{ fieldName $f.Name }} != nil {
+                                return *entity.{{ fieldName $f.Name }}
+                            }
+                            return ""
+                        }())
+                    {{- else if eq $f.Type.String "string" }}
                         v.Set("{{ $f.Name }}", entity.{{ fieldName $f.Name }})
+                    {{- else if and (eq $f.Type.String "time.Time") $f.Nillable }}
+                        v.Set("{{ $f.Name }}", func() string {
+                            if entity.{{ fieldName $f.Name }} != nil {
+                                return entity.{{ fieldName $f.Name }}.Format(dateTimeFormat)
+                            }
+                            return ""
+                        }())
                     {{- else if eq $f.Type.String "time.Time" }}
                         v.Set("{{ $f.Name }}", entity.{{ fieldName $f.Name }}.Format(dateTimeFormat))
                     {{- else }}

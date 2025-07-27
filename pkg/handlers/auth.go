@@ -51,6 +51,7 @@ func (h *Auth) Routes(g *echo.Group) {
 	g.GET("/verification-notice", h.VerificationNotice, middleware.RequireAuthentication).Name = routenames.VerificationNotice
 	g.POST("/resend-verification", h.ResendVerification, middleware.RequireAuthentication).Name = routenames.ResendVerification
 
+
 	noAuth := g.Group("/user", middleware.RequireNoAuthentication)
 	noAuth.GET("/login", h.LoginPage).Name = routenames.Login
 	noAuth.POST("/login", h.LoginSubmit).Name = routenames.LoginSubmit
@@ -383,6 +384,8 @@ func (h *Auth) ResendVerification(ctx echo.Context) error {
 
 	return echo.NewHTTPError(http.StatusUnauthorized)
 }
+
+
 
 // generateTwoDigitCode generates a random 2-digit verification code (10-99)
 func generateTwoDigitCode() string {

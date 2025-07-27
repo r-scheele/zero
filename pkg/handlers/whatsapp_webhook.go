@@ -12,7 +12,6 @@ import (
 	"github.com/r-scheele/zero/ent/user"
 	"github.com/r-scheele/zero/pkg/log"
 	"github.com/r-scheele/zero/pkg/services"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type WhatsAppWebhook struct {
@@ -465,16 +464,9 @@ NEW PASSWORD: MySecurePass123`)
 			"❌ User not found. Please make sure you're using the registered phone number.")
 	}
 
-	// Hash the new password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
-	if err != nil {
-		return h.Container.API.SendWhatsAppMessage(ctx, phoneNumber,
-			"❌ Error processing password. Please try again.")
-	}
-
-	// Update user password
+	// Update user password (password will be automatically hashed by the User schema hook)
 	_, err = userResult.Update().
-		SetPassword(string(hashedPassword)).
+		SetPassword(newPassword).
 		Save(ctx)
 	if err != nil {
 		return h.Container.API.SendWhatsAppMessage(ctx, phoneNumber,

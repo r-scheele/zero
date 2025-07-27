@@ -113,22 +113,22 @@ func AdminEntityList(
 				name    string
 				classes string
 			}{
-				{"Name", "w-32"},                                    // Always visible
-				{"Phone number", "hidden sm:table-cell w-32"},        // Hidden on mobile
-				{"Email", "hidden md:table-cell w-48"},               // Hidden on mobile and tablet
-				{"Verified", "hidden lg:table-cell w-20"},            // Hidden except on large screens
-				{"Verification code", "hidden xl:table-cell w-24"},   // Hidden except on extra large screens
-				{"Admin", "w-20"},                                   // Always visible
+				{"Name", "w-32"}, // Always visible
+				{"Phone number", "hidden sm:table-cell w-32"},      // Hidden on mobile
+				{"Email", "hidden md:table-cell w-48"},             // Hidden on mobile and tablet
+				{"Verified", "hidden lg:table-cell w-20"},          // Hidden except on large screens
+				{"Verification code", "hidden xl:table-cell w-24"}, // Hidden except on extra large screens
+				{"Admin", "w-20"}, // Always visible
 				{"Registration method", "hidden xl:table-cell w-24"}, // Hidden except on extra large screens
-				{"Profile picture", "hidden w-0"},                   // Always hidden
-				{"Dark mode", "hidden w-0"},                         // Always hidden
-				{"Bio", "hidden w-0"},                               // Always hidden
-				{"Email notifications", "hidden w-0"},               // Always hidden
-				{"Sms notifications", "hidden w-0"},                 // Always hidden
+				{"Profile picture", "hidden w-0"},                    // Always hidden
+				{"Dark mode", "hidden w-0"},                          // Always hidden
+				{"Bio", "hidden w-0"},                                // Always hidden
+				{"Email notifications", "hidden w-0"},                // Always hidden
+				{"Sms notifications", "hidden w-0"},                  // Always hidden
 				{"Is active", "hidden lg:table-cell w-20"},           // Hidden except on large screens
 				{"Last login", "hidden xl:table-cell w-32"},          // Hidden except on extra large screens
 				{"Created at", "hidden lg:table-cell w-32"},          // Hidden except on large screens
-				{"Updated at", "hidden w-0"},                        // Always hidden
+				{"Updated at", "hidden w-0"},                         // Always hidden
 			}
 
 			for _, col := range responsiveColumns {
@@ -152,22 +152,22 @@ func AdminEntityList(
 
 			// Apply responsive classes to match header with fixed widths
 			responsiveClasses := []string{
-				"w-32",                     // Name - Always visible
+				"w-32",                      // Name - Always visible
 				"hidden sm:table-cell w-32", // Phone number - Hidden on mobile
 				"hidden md:table-cell w-48", // Email - Hidden on mobile and tablet
 				"hidden lg:table-cell w-20", // Verified - Hidden except on large screens
 				"hidden xl:table-cell w-24", // Verification code - Hidden except on extra large screens
-				"w-20",                     // Admin - Always visible
+				"w-20",                      // Admin - Always visible
 				"hidden xl:table-cell w-24", // Registration method - Hidden except on extra large screens
-				"hidden w-0",               // Profile picture - Always hidden
-				"hidden w-0",               // Dark mode - Always hidden
-				"hidden w-0",               // Bio - Always hidden
-				"hidden w-0",               // Email notifications - Always hidden
-				"hidden w-0",               // Sms notifications - Always hidden
+				"hidden w-0",                // Profile picture - Always hidden
+				"hidden w-0",                // Dark mode - Always hidden
+				"hidden w-0",                // Bio - Always hidden
+				"hidden w-0",                // Email notifications - Always hidden
+				"hidden w-0",                // Sms notifications - Always hidden
 				"hidden lg:table-cell w-20", // Is active - Hidden except on large screens
 				"hidden xl:table-cell w-32", // Last login - Hidden except on extra large screens
 				"hidden lg:table-cell w-32", // Created at - Hidden except on large screens
-				"hidden w-0",               // Updated at - Always hidden
+				"hidden w-0",                // Updated at - Always hidden
 			}
 
 			for i, h := range row.Values {
@@ -464,26 +464,6 @@ func AdminUserView(ctx echo.Context, entity map[string][]string, id int) error {
 						),
 					),
 
-					// Account Status
-					Div(
-						Class("flex gap-2"),
-						H3(Class("text-sm font-medium text-gray-700 mb-2 w-full"), Text("Account Status")),
-						If(!isVerified,
-							Button(
-								Class("inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"),
-								Attr("onclick", fmt.Sprintf("if(confirm('Verify %s?')) { fetch('/admin/user/%d/verify', {method: 'POST'}); location.reload(); }", getValue("name"), id)),
-								Text("✅ Verify Account"),
-							),
-						),
-						If(!isAdmin,
-							Button(
-								Class("inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700"),
-								Attr("onclick", fmt.Sprintf("if(confirm('Make %s an admin?')) { fetch('/admin/user/%d/make-admin', {method: 'POST'}); location.reload(); }", getValue("name"), id)),
-								Text("👑 Make Admin"),
-							),
-						),
-					),
-
 					// Communication
 					Div(
 						Class("flex gap-2"),
@@ -535,22 +515,22 @@ func AdminEntityListTable(
 				name    string
 				classes string
 			}{
-				{"Name", ""},                                    // Always visible
-				{"Phone number", "hidden"},                      // Always hidden
-				{"Email", "hidden xl:table-cell"},               // Hidden except on extra large screens
-				{"Verified", "hidden 2xl:table-cell"},           // Hidden except on 2xl screens
-				{"Verification code", "hidden"},                 // Always hidden
-				{"Admin", ""},                                   // Always visible
-				{"Registration method", "hidden"},               // Always hidden
-				{"Profile picture", "hidden"},                   // Always hidden
-				{"Dark mode", "hidden"},                         // Always hidden
-				{"Bio", "hidden"},                               // Always hidden
-				{"Email notifications", "hidden"},               // Always hidden
-				{"Sms notifications", "hidden"},                 // Always hidden
-				{"Is active", "hidden 2xl:table-cell"},          // Hidden except on 2xl screens
-				{"Last login", "hidden"},                        // Always hidden
-				{"Created at", "hidden 2xl:table-cell"},         // Hidden except on 2xl screens
-				{"Updated at", "hidden"},                        // Always hidden
+				{"Name", ""},                            // Always visible
+				{"Phone number", "hidden"},              // Always hidden
+				{"Email", "hidden xl:table-cell"},       // Hidden except on extra large screens
+				{"Verified", "hidden 2xl:table-cell"},   // Hidden except on 2xl screens
+				{"Verification code", "hidden"},         // Always hidden
+				{"Admin", ""},                           // Always visible
+				{"Registration method", "hidden"},       // Always hidden
+				{"Profile picture", "hidden"},           // Always hidden
+				{"Dark mode", "hidden"},                 // Always hidden
+				{"Bio", "hidden"},                       // Always hidden
+				{"Email notifications", "hidden"},       // Always hidden
+				{"Sms notifications", "hidden"},         // Always hidden
+				{"Is active", "hidden 2xl:table-cell"},  // Hidden except on 2xl screens
+				{"Last login", "hidden"},                // Always hidden
+				{"Created at", "hidden 2xl:table-cell"}, // Hidden except on 2xl screens
+				{"Updated at", "hidden"},                // Always hidden
 			}
 
 			for _, col := range responsiveColumns {
