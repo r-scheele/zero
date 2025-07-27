@@ -86,7 +86,6 @@ Thumbs.db
 *.orig
 
 # Air (live reload) files
-.air.toml
 tmp/
 
 # Generated CSS (if you want to rebuild it)
