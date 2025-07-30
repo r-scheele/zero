@@ -144,13 +144,8 @@ func RequireNoAuthentication(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 		
 		if u := c.Get(context.AuthenticatedUserKey); u != nil {
-			// Check if the user is actually valid, not just present in context
-			if user, ok := u.(*ent.User); ok && user != nil && user.ID > 0 {
-				// User is properly authenticated - redirect to authenticated home page
-				return c.Redirect(http.StatusFound, "/home")
-			}
-			// User object is invalid or corrupted - clear it and continue
-			c.Set(context.AuthenticatedUserKey, nil)
+			// Return forbidden error if user is authenticated
+			return echo.NewHTTPError(http.StatusForbidden)
 		}
 
 		return next(c)
