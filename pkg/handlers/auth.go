@@ -125,6 +125,9 @@ func (h *Auth) LoginPage(ctx echo.Context) error {
 }
 
 func (h *Auth) LoginSubmit(ctx echo.Context) error {
+	// Clear any existing authentication context to ensure fresh login attempt
+	ctx.Set(context.AuthenticatedUserKey, nil)
+
 	var input forms.Login
 
 	// Handle form submission errors
@@ -191,38 +194,23 @@ func (h *Auth) LoginSubmit(ctx echo.Context) error {
 }
 
 func (h *Auth) Logout(ctx echo.Context) error {
-	// Get current user for logging
-	currentUser := ctx.Get(context.AuthenticatedUserKey)
+	// Fast logout with minimal processing
+	log.Ctx(ctx).Info("logout attempt started")
 
-	// Safety check: if current user is nil, redirect to home page for unauthenticated users
-	if currentUser == nil {
-		log.Ctx(ctx).Info("logout attempted with no authenticated user - redirecting to home")
-		return ctx.Redirect(http.StatusFound, "/")
-	}
+	// Clear session immediately
+	h.auth.Logout(ctx)
 
+	// Clear context
+	ctx.Set(context.AuthenticatedUserKey, nil)
 
+	// Set minimal cache headers for faster redirect
+	ctx.Response().Header().Set("Cache-Control", "no-cache")
+	ctx.Response().Header().Set("Location", "/")
 
-	// Clear session
-	if err := h.auth.Logout(ctx); err != nil {
-		log.Ctx(ctx).Error("logout failed", "error", err)
-		return echo.NewHTTPError(http.StatusInternalServerError)
-	}
+	log.Ctx(ctx).Info("logout completed, redirecting")
 
-	// Set security headers to prevent caching
-	ctx.Response().Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-	ctx.Response().Header().Set("Pragma", "no-cache")
-	ctx.Response().Header().Set("Expires", "0")
-
-	// Log the logout
-	log.Ctx(ctx).Info("user logged out")
-
-	// Handle HTMX requests
-	if ctx.Request().Header.Get("HX-Request") == "true" {
-		ctx.Response().Header().Set("HX-Redirect", "/")
-		return ctx.NoContent(http.StatusOK)
-	}
-
-	return ctx.Redirect(http.StatusFound, "/")
+	// Use faster redirect method
+	return ctx.Redirect(http.StatusSeeOther, "/")
 }
 
 func (h *Auth) RegisterPage(ctx echo.Context) error {

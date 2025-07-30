@@ -20,13 +20,25 @@ import (
 func LoadAuthenticatedUser(authClient *services.AuthClient) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			// Get session info for debugging
+			sess, sessErr := session.Get(c, "ua")
+			var sessionInfo string
+			if sessErr == nil {
+				sessionInfo = fmt.Sprintf("session_id=%s, has_user_id=%v, authenticated=%v", 
+					sess.ID, sess.Values["user_id"] != nil, sess.Values["authenticated"])
+			} else {
+				sessionInfo = fmt.Sprintf("session_error=%v", sessErr)
+			}
+
 			// Ensure we start with a clean context for authentication
 			c.Set(context.AuthenticatedUserKey, nil)
 			
 			u, err := authClient.GetAuthenticatedUser(c)
 			switch err.(type) {
 			case *ent.NotFoundError:
-				log.Ctx(c).Warn("auth user not found - clearing session")
+				log.Ctx(c).Warn("auth user not found - clearing session", 
+					"path", c.Request().URL.Path,
+					"session_info", sessionInfo)
 				// Clear corrupted session data
 				if sess, err := session.Get(c, "ua"); err == nil {
 					sess.Values["user_id"] = nil
@@ -35,11 +47,21 @@ func LoadAuthenticatedUser(authClient *services.AuthClient) echo.MiddlewareFunc 
 				}
 			case services.NotAuthenticatedError:
 				// User is not authenticated - context remains nil
+				log.Ctx(c).Debug("user not authenticated", 
+					"path", c.Request().URL.Path,
+					"session_info", sessionInfo)
 			case nil:
 				// User is authenticated - set in context
+				log.Ctx(c).Debug("authenticated user loaded", 
+					"user_id", u.ID,
+					"path", c.Request().URL.Path,
+					"session_info", sessionInfo)
 				c.Set(context.AuthenticatedUserKey, u)
 			default:
-				log.Ctx(c).Error("error querying for authenticated user", "error", err)
+				log.Ctx(c).Error("error querying for authenticated user", 
+					"error", err,
+					"path", c.Request().URL.Path,
+					"session_info", sessionInfo)
 				// Clear potentially corrupted session on any other error
 				if sess, err := session.Get(c, "ua"); err == nil {
 					sess.Values["user_id"] = nil
@@ -115,6 +137,12 @@ func RequireAuthentication(next echo.HandlerFunc) echo.HandlerFunc {
 // RequireNoAuthentication requires that the user not be authenticated in order to proceed.
 func RequireNoAuthentication(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
+		// Allow login form submissions even if user is already authenticated
+		// This enables users to login with different credentials
+		if c.Request().Method == "POST" && (c.Request().URL.Path == "/user/login" || c.Request().URL.Path == "/user/register") {
+			return next(c)
+		}
+		
 		if u := c.Get(context.AuthenticatedUserKey); u != nil {
 			// Check if the user is actually valid, not just present in context
 			if user, ok := u.(*ent.User); ok && user != nil && user.ID > 0 {

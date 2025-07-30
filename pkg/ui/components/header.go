@@ -67,6 +67,7 @@ func AppHeader(r *ui.Request) Node {
 						Href(r.Path(routenames.Logout)),
 						Class("btn btn-ghost btn-md lg:btn-lg gap-2 btn-modern text-slate-600 hover:text-red-600 hover:bg-red-50 border-slate-200 font-medium min-h-12 px-4 lg:px-6"),
 						Style("min-height: 48px; font-size: 16px;"), // Better touch targets
+						Attr("hx-boost", "false"), // Disable HTMX boost for reliable logout
 						Span(Class("hidden md:inline text-sm lg:text-base"), Text("Logout")),
 					),
 					),

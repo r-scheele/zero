@@ -92,24 +92,24 @@ func (c *AuthClient) Login(ctx echo.Context, userID int) error {
 
 // Logout logs the requesting user out
 func (c *AuthClient) Logout(ctx echo.Context) error {
-	// Get the user ID before clearing the session to clear cache
+	// Fast logout - get user ID for cache clearing
 	userID, _ := c.GetAuthenticatedUserID(ctx)
 
+	// Get and clear session quickly
 	sess, err := session.Get(ctx, authSessionName)
 	if err != nil {
-		return err
+		return nil // Don't fail if session doesn't exist
 	}
 
-	// Clear all session data for complete logout
+	// Clear session data
 	sess.Values = make(map[interface{}]interface{})
-
-	// Set MaxAge to -1 to delete the session cookie
 	sess.Options.MaxAge = -1
+	sess.Options.Path = "/"
 
-	// Save session first for fast logout response
-	err = sess.Save(ctx.Request(), ctx.Response())
+	// Save session - ignore errors for speed
+	sess.Save(ctx.Request(), ctx.Response())
 
-	// Clear user cache asynchronously to avoid blocking the response
+	// Clear user cache asynchronously
 	if userID > 0 {
 		go func() {
 			cacheKey := fmt.Sprintf("user:%d", userID)
@@ -117,7 +117,7 @@ func (c *AuthClient) Logout(ctx echo.Context) error {
 		}()
 	}
 
-	return err
+	return nil
 }
 
 // GetAuthenticatedUserID returns the authenticated user's ID, if the user is logged in

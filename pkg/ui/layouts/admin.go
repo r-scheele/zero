@@ -217,6 +217,9 @@ func adminMenuItem(r *ui.Request, icon Node, title, href string) Node {
 		A(
 			Href(href),
 			Class(linkClasses+" group"),
+			Iff(title == "Sign Out", func() Node {
+				return Attr("hx-boost", "false") // Disable HTMX boost for reliable logout
+			}),
 			Div(
 				Class(iconClasses),
 				icon,
@@ -294,6 +297,9 @@ func adminBottomNavItem(r *ui.Request, icon Node, title, href string) Node {
 	return A(
 		Href(href),
 		Class("flex flex-col items-center justify-center p-2 transition-all duration-300 ease-out rounded-xl group"),
+		Iff(title == "Logout", func() Node {
+			return Attr("hx-boost", "false") // Disable HTMX boost for reliable logout
+		}),
 		Div(
 			Class("relative mb-1"),
 			Div(

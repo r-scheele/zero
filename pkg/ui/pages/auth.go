@@ -104,7 +104,7 @@ func VerificationNotice(ctx echo.Context) error {
 				),
 				A(
 					Class("flex-1"),
-					Href(r.Path(routenames.Login)),
+					Href(r.Path(routenames.Home)),
 						Button(
 						Class("btn btn-outline btn-md gap-2 w-full border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 font-medium shadow-sm hover:shadow-md transition-all duration-200 text-sm px-4 py-3"),
 						Type("button"),

@@ -313,11 +313,23 @@ func userSidebar(r *ui.Request) Node {
 							Style("min-height: calc(100vh - 400px); min-height: calc(100svh - 400px);"), // Maximize space to push button to bottom
 						),
 						// Sign Out at the absolute bottom with visual separation - always show for authenticated users
-						Div(
-							Class("mt-auto pt-6 border-t border-slate-200"),
-							Style("position: absolute; bottom: 0; left: 0; right: 0; background: white; padding: 1.5rem; border-top: 1px solid rgb(226 232 240);"), // Absolute positioning at bottom
-							userMenuItem(icons.Exit(), "Sign Out", r.Path(routenames.Logout)),
-						),
+			Div(
+				Class("mt-auto pt-6 border-t border-slate-200"),
+				Style("position: absolute; bottom: 0; left: 0; right: 0; background: white; padding: 1.5rem; border-top: 1px solid rgb(226 232 240);"), // Absolute positioning at bottom
+				A(
+					Href(r.Path(routenames.Logout)),
+					Class("user-nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-all duration-200"),
+					Attr("hx-boost", "false"), // Disable HTMX boost for reliable logout
+					Div(
+						Class("w-5 h-5 text-red-600"),
+						icons.Exit(),
+					),
+					Span(
+						Class("font-medium text-sm text-red-600"),
+						Text("Sign Out"),
+					),
+				),
+			),
 					),
 				),
 			),
@@ -371,6 +383,9 @@ func userBottomNavigation(r *ui.Request) Node {
 		return A(
 			Href(href),
 			Class("flex flex-col items-center justify-center p-3 transition-all duration-300 ease-out rounded-2xl group"),
+			Iff(title == "Sign Out", func() Node {
+				return Attr("hx-boost", "false") // Disable HTMX boost for reliable logout
+			}),
 			Div(
 				Class("relative mb-1"),
 				Div(
@@ -527,6 +542,7 @@ func mobileNavModal(r *ui.Request) Node {
 					Href(r.Path(routenames.Logout)),
 					Class("flex items-center gap-3 p-2 rounded-md hover:bg-red-50 text-red-600 transition-colors text-sm"),
 					Attr("onclick", "document.getElementById('mobile_nav_modal').classList.add('hidden'); document.getElementById('more_nav_button').classList.remove('more-active');"),
+					Attr("hx-boost", "false"), // Disable HTMX boost for reliable logout
 					icons.Exit(),
 					Text("Sign Out"),
 				),
