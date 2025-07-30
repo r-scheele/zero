@@ -180,7 +180,8 @@ func (h *Auth) LoginSubmit(ctx echo.Context) error {
 	// Check verification status after successful login
 	if !u.Verified {
 		msg.Warning(ctx, "Please verify your phone number to access all features.")
-		return redirect.New(ctx).Route(routenames.VerificationNotice).Go()
+		// Don't redirect to verification notice on login - let them access home page
+		// Verification notice should only be shown after signup
 	}
 
 	msg.Success(ctx, fmt.Sprintf("Welcome back, %s!", u.Name))

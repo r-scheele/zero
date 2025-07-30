@@ -20,52 +20,52 @@ import (
 func LoadAuthenticatedUser(authClient *services.AuthClient) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			// Get session info for debugging
-			sess, sessErr := session.Get(c, "ua")
-			var sessionInfo string
-			if sessErr == nil {
-				sessionInfo = fmt.Sprintf("session_id=%s, has_user_id=%v, authenticated=%v", 
-					sess.ID, sess.Values["user_id"] != nil, sess.Values["authenticated"])
-			} else {
-				sessionInfo = fmt.Sprintf("session_error=%v", sessErr)
-			}
-
-			// Ensure we start with a clean context for authentication
+			// Always start with a clean context for authentication
 			c.Set(context.AuthenticatedUserKey, nil)
 			
 			u, err := authClient.GetAuthenticatedUser(c)
 			switch err.(type) {
 			case *ent.NotFoundError:
-				log.Ctx(c).Warn("auth user not found - clearing session", 
-					"path", c.Request().URL.Path,
-					"session_info", sessionInfo)
-				// Clear corrupted session data
+				log.Ctx(c).Warn("auth user not found - clearing session and cache", 
+					"path", c.Request().URL.Path)
+				// Clear corrupted session data completely
 				if sess, err := session.Get(c, "ua"); err == nil {
-					sess.Values["user_id"] = nil
-					sess.Values["authenticated"] = false
+					// Get user ID before clearing session for cache cleanup
+					if userID, ok := sess.Values["user_id"].(int); ok {
+						cacheKey := fmt.Sprintf("user:%d", userID)
+						authClient.ClearUserCache(c.Request().Context(), cacheKey)
+					}
+					// Clear session completely
+					for key := range sess.Values {
+						delete(sess.Values, key)
+					}
 					sess.Save(c.Request(), c.Response())
 				}
 			case services.NotAuthenticatedError:
 				// User is not authenticated - context remains nil
 				log.Ctx(c).Debug("user not authenticated", 
-					"path", c.Request().URL.Path,
-					"session_info", sessionInfo)
+					"path", c.Request().URL.Path)
 			case nil:
 				// User is authenticated - set in context
 				log.Ctx(c).Debug("authenticated user loaded", 
 					"user_id", u.ID,
-					"path", c.Request().URL.Path,
-					"session_info", sessionInfo)
+					"path", c.Request().URL.Path)
 				c.Set(context.AuthenticatedUserKey, u)
 			default:
 				log.Ctx(c).Error("error querying for authenticated user", 
 					"error", err,
-					"path", c.Request().URL.Path,
-					"session_info", sessionInfo)
-				// Clear potentially corrupted session on any other error
+					"path", c.Request().URL.Path)
+				// Clear potentially corrupted session and cache completely on any other error
 				if sess, err := session.Get(c, "ua"); err == nil {
-					sess.Values["user_id"] = nil
-					sess.Values["authenticated"] = false
+					// Get user ID before clearing session for cache cleanup
+					if userID, ok := sess.Values["user_id"].(int); ok {
+						cacheKey := fmt.Sprintf("user:%d", userID)
+						authClient.ClearUserCache(c.Request().Context(), cacheKey)
+					}
+					// Clear session completely
+					for key := range sess.Values {
+						delete(sess.Values, key)
+					}
 					sess.Save(c.Request(), c.Response())
 				}
 				return echo.NewHTTPError(

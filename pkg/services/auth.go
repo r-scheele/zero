@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -12,7 +13,7 @@ import (
 	"github.com/r-scheele/zero/ent"
 	"github.com/r-scheele/zero/ent/passwordtoken"
 	"github.com/r-scheele/zero/ent/user"
-	"github.com/r-scheele/zero/pkg/context"
+	pkgcontext "github.com/r-scheele/zero/pkg/context"
 	"github.com/r-scheele/zero/pkg/session"
 
 	"github.com/labstack/echo/v4"
@@ -64,30 +65,43 @@ func NewAuthClient(cfg *config.Config, orm *ent.Client, cache *CacheClient) *Aut
 
 // Login logs in a user of a given ID
 func (c *AuthClient) Login(ctx echo.Context, userID int) error {
-	// Clear any existing user cache before login
-	if existingUserID, _ := c.GetAuthenticatedUserID(ctx); existingUserID > 0 {
-		cacheKey := fmt.Sprintf("user:%d", existingUserID)
-		c.cache.Flush().Key(cacheKey).Execute(ctx.Request().Context())
-	}
-
+	// Get or create session first
 	sess, err := session.Get(ctx, authSessionName)
 	if err != nil {
 		return err
 	}
 
-	// Clear existing session values first
-	delete(sess.Values, authSessionKeyUserID)
-	delete(sess.Values, authSessionKeyAuthenticated)
+	// Clear any existing user cache before login
+	if existingUserID, _ := c.GetAuthenticatedUserID(ctx); existingUserID > 0 {
+		existingCacheKey := fmt.Sprintf("user:%d", existingUserID)
+		c.cache.Flush().Key(existingCacheKey).Execute(ctx.Request().Context())
+	}
+
+	// Clear all user cache patterns to prevent stale data
+	c.cache.Flush().Tags("user:").Execute(ctx.Request().Context())
+
+	// Completely clear the session to avoid any stale data
+	for key := range sess.Values {
+		delete(sess.Values, key)
+	}
+
+	// Clear the session completely and recreate it
+	sess.Values = make(map[interface{}]interface{})
 
 	// Set new session values
 	sess.Values[authSessionKeyUserID] = userID
 	sess.Values[authSessionKeyAuthenticated] = true
 
-	// Clear cache for the new user to ensure fresh data
-	cacheKey := fmt.Sprintf("user:%d", userID)
-	c.cache.Flush().Key(cacheKey).Execute(ctx.Request().Context())
+	// Save session first
+	if err := sess.Save(ctx.Request(), ctx.Response()); err != nil {
+		return err
+	}
 
-	return sess.Save(ctx.Request(), ctx.Response())
+	// Clear cache for the new user to ensure fresh data
+	newUserCacheKey := fmt.Sprintf("user:%d", userID)
+	c.cache.Flush().Key(newUserCacheKey).Execute(ctx.Request().Context())
+
+	return nil
 }
 
 // Logout logs the requesting user out
@@ -118,6 +132,11 @@ func (c *AuthClient) Logout(ctx echo.Context) error {
 	}
 
 	return nil
+}
+
+// ClearUserCache clears the cache for a specific user
+func (c *AuthClient) ClearUserCache(ctx context.Context, cacheKey string) {
+	c.cache.Flush().Key(cacheKey).Execute(ctx)
 }
 
 // GetAuthenticatedUserID returns the authenticated user's ID, if the user is logged in
@@ -231,7 +250,7 @@ func (c *AuthClient) GetValidPasswordToken(ctx echo.Context, userID, tokenID int
 			return pt, nil
 		}
 	default:
-		if !context.IsCanceledError(err) {
+		if !pkgcontext.IsCanceledError(err) {
 			return nil, err
 		}
 	}
