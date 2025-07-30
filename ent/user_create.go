@@ -10,6 +10,9 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/r-scheele/zero/ent/note"
+	"github.com/r-scheele/zero/ent/notelike"
+	"github.com/r-scheele/zero/ent/noterepost"
 	"github.com/r-scheele/zero/ent/passwordtoken"
 	"github.com/r-scheele/zero/ent/user"
 )
@@ -258,6 +261,51 @@ func (uc *UserCreate) AddOwner(p ...*PasswordToken) *UserCreate {
 	return uc.AddOwnerIDs(ids...)
 }
 
+// AddNoteIDs adds the "notes" edge to the Note entity by IDs.
+func (uc *UserCreate) AddNoteIDs(ids ...int) *UserCreate {
+	uc.mutation.AddNoteIDs(ids...)
+	return uc
+}
+
+// AddNotes adds the "notes" edges to the Note entity.
+func (uc *UserCreate) AddNotes(n ...*Note) *UserCreate {
+	ids := make([]int, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return uc.AddNoteIDs(ids...)
+}
+
+// AddNoteLikeIDs adds the "note_likes" edge to the NoteLike entity by IDs.
+func (uc *UserCreate) AddNoteLikeIDs(ids ...int) *UserCreate {
+	uc.mutation.AddNoteLikeIDs(ids...)
+	return uc
+}
+
+// AddNoteLikes adds the "note_likes" edges to the NoteLike entity.
+func (uc *UserCreate) AddNoteLikes(n ...*NoteLike) *UserCreate {
+	ids := make([]int, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return uc.AddNoteLikeIDs(ids...)
+}
+
+// AddNoteRepostIDs adds the "note_reposts" edge to the NoteRepost entity by IDs.
+func (uc *UserCreate) AddNoteRepostIDs(ids ...int) *UserCreate {
+	uc.mutation.AddNoteRepostIDs(ids...)
+	return uc
+}
+
+// AddNoteReposts adds the "note_reposts" edges to the NoteRepost entity.
+func (uc *UserCreate) AddNoteReposts(n ...*NoteRepost) *UserCreate {
+	ids := make([]int, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return uc.AddNoteRepostIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uc *UserCreate) Mutation() *UserMutation {
 	return uc.mutation
@@ -265,9 +313,7 @@ func (uc *UserCreate) Mutation() *UserMutation {
 
 // Save creates the User in the database.
 func (uc *UserCreate) Save(ctx context.Context) (*User, error) {
-	if err := uc.defaults(); err != nil {
-		return nil, err
-	}
+	uc.defaults()
 	return withHooks(ctx, uc.sqlSave, uc.mutation, uc.hooks)
 }
 
@@ -294,7 +340,7 @@ func (uc *UserCreate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (uc *UserCreate) defaults() error {
+func (uc *UserCreate) defaults() {
 	if _, ok := uc.mutation.Verified(); !ok {
 		v := user.DefaultVerified
 		uc.mutation.SetVerified(v)
@@ -324,20 +370,13 @@ func (uc *UserCreate) defaults() error {
 		uc.mutation.SetIsActive(v)
 	}
 	if _, ok := uc.mutation.CreatedAt(); !ok {
-		if user.DefaultCreatedAt == nil {
-			return fmt.Errorf("ent: uninitialized user.DefaultCreatedAt (forgotten import ent/runtime?)")
-		}
 		v := user.DefaultCreatedAt()
 		uc.mutation.SetCreatedAt(v)
 	}
 	if _, ok := uc.mutation.UpdatedAt(); !ok {
-		if user.DefaultUpdatedAt == nil {
-			return fmt.Errorf("ent: uninitialized user.DefaultUpdatedAt (forgotten import ent/runtime?)")
-		}
 		v := user.DefaultUpdatedAt()
 		uc.mutation.SetUpdatedAt(v)
 	}
-	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -505,6 +544,54 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(passwordtoken.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := uc.mutation.NotesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NotesTable,
+			Columns: []string{user.NotesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(note.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := uc.mutation.NoteLikesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteLikesTable,
+			Columns: []string{user.NoteLikesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelike.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := uc.mutation.NoteRepostsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteRepostsTable,
+			Columns: []string{user.NoteRepostsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noterepost.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

@@ -28,6 +28,12 @@ cache:
   capacity: 100000
   expiration:
     publicFile: "4380h"
+    userSession: "24h"
+    noteData: "1h"
+    userProfile: "30m"
+    notesList: "15m"
+    noteCounts: "5m"
+    publicNotes: "10m"
 
 database:
   driver: "sqlite3"
@@ -57,3 +63,150 @@ mail:
   user: "" # Set this to your email or SMTP username
   password: "" # Set this to your app password or SMTP password
   fromAddress: "noreply@yourdomain.com" # Set this to your from email address
+
+# Cloud Storage Configuration
+# Set environment variables to enable cloud storage
+# Only one provider should be configured at a time
+storage:
+  # AWS S3 Configuration
+  # Set these environment variables:
+  # AWS_S3_BUCKET=your-bucket-name
+  # AWS_REGION=us-east-1 (optional, defaults to us-east-1)
+  # AWS_ACCESS_KEY_ID=your-access-key
+  # AWS_SECRET_ACCESS_KEY=your-secret-key
+  aws:
+    enabled: false
+    bucket: "" # Will be read from AWS_S3_BUCKET env var
+    region: "us-east-1" # Will be read from AWS_REGION env var
+  
+  # Google Cloud Storage Configuration
+  # Set these environment variables:
+  # GCS_BUCKET=your-bucket-name
+  # GCP_PROJECT_ID=your-project-id
+  # GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+  gcs:
+    enabled: false
+    bucket: "" # Will be read from GCS_BUCKET env var
+    projectId: "" # Will be read from GCP_PROJECT_ID env var
+  
+  # Azure Blob Storage Configuration
+  # Set these environment variables:
+  # AZURE_STORAGE_ACCOUNT=your-storage-account
+  # AZURE_STORAGE_KEY=your-storage-key
+  # AZURE_CONTAINER=files (optional, defaults to 'files')
+  azure:
+    enabled: false
+    account: "" # Will be read from AZURE_STORAGE_ACCOUNT env var
+    key: "" # Will be read from AZURE_STORAGE_KEY env var
+    container: "files" # Will be read from AZURE_CONTAINER env var
+  
+  # Local storage fallback (used when no cloud storage is configured)
+  local:
+    enabled: true
+    baseUrl: "http://localhost:8000" # Base URL for local file access
+
+# WhatsApp Integration Configuration
+whatsapp:
+  enabled: false
+  # WhatsApp Business API Configuration
+  # Set these environment variables for production:
+  # WHATSAPP_PHONE_NUMBER_ID=your-phone-number-id
+  # WHATSAPP_ACCESS_TOKEN=your-access-token
+  # WHATSAPP_WEBHOOK_VERIFY_TOKEN=your-webhook-verify-token
+  # WHATSAPP_APP_SECRET=your-app-secret
+  phoneNumberId: "" # Will be read from WHATSAPP_PHONE_NUMBER_ID env var
+  accessToken: "" # Will be read from WHATSAPP_ACCESS_TOKEN env var
+  webhookVerifyToken: "" # Will be read from WHATSAPP_WEBHOOK_VERIFY_TOKEN env var
+  appSecret: "" # Will be read from WHATSAPP_APP_SECRET env var
+  apiVersion: "v18.0" # WhatsApp API version
+  baseUrl: "https://graph.facebook.com" # WhatsApp API base URL
+
+# AI/LLM Configuration
+ai:
+  enabled: false
+  # OpenAI Configuration
+  # Set OPENAI_API_KEY environment variable
+  openai:
+    enabled: false
+    apiKey: "" # Will be read from OPENAI_API_KEY env var
+    model: "gpt-4" # Default model to use
+    maxTokens: 4000 # Maximum tokens per request
+  
+  # Anthropic Claude Configuration
+  # Set ANTHROPIC_API_KEY environment variable
+  anthropic:
+    enabled: false
+    apiKey: "" # Will be read from ANTHROPIC_API_KEY env var
+    model: "claude-3-sonnet-20240229" # Default model to use
+    maxTokens: 4000 # Maximum tokens per request
+
+# File Upload Limits
+fileUpload:
+  maxFileSize: "40MB" # Maximum size per file
+  maxTotalSize: "400MB" # Maximum total size per note
+  maxFiles: 20 # Maximum number of files per note
+  allowedTypes:
+    - "image/jpeg"
+    - "image/png"
+    - "image/gif"
+    - "application/pdf"
+    - "application/msword"
+    - "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    - "text/plain"
+    - "video/mp4"
+    - "video/avi"
+    - "video/quicktime"
+
+# Security Configuration
+security:
+  # CORS Configuration
+  cors:
+    enabled: true
+    allowedOrigins:
+      - "http://localhost:3000"
+      - "http://localhost:8000"
+    allowedMethods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+      - "OPTIONS"
+    allowedHeaders:
+      - "Content-Type"
+      - "Authorization"
+      - "X-Requested-With"
+  
+  # Rate Limiting
+  rateLimit:
+    enabled: true
+    requestsPerMinute: 60
+    burstSize: 10
+  
+  # Content Security Policy
+  csp:
+    enabled: false
+    directives:
+      defaultSrc: "'self'"
+      scriptSrc: "'self' 'unsafe-inline'"
+      styleSrc: "'self' 'unsafe-inline'"
+      imgSrc: "'self' data: https:"
+
+# Monitoring and Logging
+monitoring:
+  # Metrics collection
+  metrics:
+    enabled: false
+    endpoint: "/metrics"
+  
+  # Health check endpoint
+  health:
+    enabled: true
+    endpoint: "/health"
+  
+  # Request logging
+  requestLogging:
+    enabled: true
+    excludePaths:
+      - "/health"
+      - "/metrics"
+      - "/static"

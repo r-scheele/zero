@@ -8,7 +8,7 @@ const (
 	Home                  = "home"
 	Dashboard             = "dashboard"
 	Quizzes               = "quizzes"
-	Summaries             = "summaries"
+	Notes                 = "notes"
 	About                 = "about"
 	Contact               = "contact"
 	ContactSubmit         = "contact.submit"

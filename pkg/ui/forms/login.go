@@ -47,14 +47,14 @@ func (f *Login) Render(r *ui.Request) Node {
 			A(
 				Class("text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"),
 				Href(r.Path(routenames.ForgotPassword)),
-				Text("Forgot password? 🤔"),
+				Text("Forgot password?"),
 			),
 		),
 		Div(
 			Class("pt-2"), // Removed flex gap since only one button now
 			Button(
-				Class("btn-modern-primary w-full"), // Full width button
 				Type("submit"),
+				Class("w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors"),
 				Text("Sign In"),
 			),
 		),
@@ -65,7 +65,7 @@ func (f *Login) Render(r *ui.Request) Node {
 			A(
 				Class("text-blue-600 hover:text-blue-800 font-medium transition-colors"),
 				Href(r.Path(routenames.Register)),
-				Text("Join us! 💫"),
+				Text("Join us!"),
 			),
 		),
 	)

@@ -9,4 +9,5 @@ func Register(c *services.Container) {
 	c.Tasks.Register(NewExampleTaskQueue(c))
 	c.Tasks.Register(NewPhoneVerificationTaskQueue(c))
 	c.Tasks.Register(NewPasswordResetTaskQueue(c))
+	c.Tasks.Register(NewFileUploadTaskQueue(c))
 }

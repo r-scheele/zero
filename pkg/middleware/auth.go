@@ -11,6 +11,7 @@ import (
 	"github.com/r-scheele/zero/pkg/msg"
 	"github.com/r-scheele/zero/pkg/routenames"
 	"github.com/r-scheele/zero/pkg/services"
+	"github.com/r-scheele/zero/pkg/session"
 
 	"github.com/labstack/echo/v4"
 )
@@ -19,14 +20,32 @@ import (
 func LoadAuthenticatedUser(authClient *services.AuthClient) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			// Ensure we start with a clean context for authentication
+			c.Set(context.AuthenticatedUserKey, nil)
+			
 			u, err := authClient.GetAuthenticatedUser(c)
 			switch err.(type) {
 			case *ent.NotFoundError:
-				log.Ctx(c).Warn("auth user not found")
+				log.Ctx(c).Warn("auth user not found - clearing session")
+				// Clear corrupted session data
+				if sess, err := session.Get(c, "ua"); err == nil {
+					sess.Values["user_id"] = nil
+					sess.Values["authenticated"] = false
+					sess.Save(c.Request(), c.Response())
+				}
 			case services.NotAuthenticatedError:
+				// User is not authenticated - context remains nil
 			case nil:
+				// User is authenticated - set in context
 				c.Set(context.AuthenticatedUserKey, u)
 			default:
+				log.Ctx(c).Error("error querying for authenticated user", "error", err)
+				// Clear potentially corrupted session on any other error
+				if sess, err := session.Get(c, "ua"); err == nil {
+					sess.Values["user_id"] = nil
+					sess.Values["authenticated"] = false
+					sess.Save(c.Request(), c.Response())
+				}
 				return echo.NewHTTPError(
 					http.StatusInternalServerError,
 					fmt.Sprintf("error querying for authenticated user: %v", err),
@@ -97,7 +116,13 @@ func RequireAuthentication(next echo.HandlerFunc) echo.HandlerFunc {
 func RequireNoAuthentication(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		if u := c.Get(context.AuthenticatedUserKey); u != nil {
-			return echo.NewHTTPError(http.StatusForbidden)
+			// Check if the user is actually valid, not just present in context
+			if user, ok := u.(*ent.User); ok && user != nil && user.ID > 0 {
+				// User is properly authenticated - redirect to authenticated home page
+				return c.Redirect(http.StatusFound, "/home")
+			}
+			// User object is invalid or corrupted - clear it and continue
+			c.Set(context.AuthenticatedUserKey, nil)
 		}
 
 		return next(c)

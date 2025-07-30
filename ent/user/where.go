@@ -883,6 +883,75 @@ func HasOwnerWith(preds ...predicate.PasswordToken) predicate.User {
 	})
 }
 
+// HasNotes applies the HasEdge predicate on the "notes" edge.
+func HasNotes() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, NotesTable, NotesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasNotesWith applies the HasEdge predicate on the "notes" edge with a given conditions (other predicates).
+func HasNotesWith(preds ...predicate.Note) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newNotesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasNoteLikes applies the HasEdge predicate on the "note_likes" edge.
+func HasNoteLikes() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, NoteLikesTable, NoteLikesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasNoteLikesWith applies the HasEdge predicate on the "note_likes" edge with a given conditions (other predicates).
+func HasNoteLikesWith(preds ...predicate.NoteLike) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newNoteLikesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasNoteReposts applies the HasEdge predicate on the "note_reposts" edge.
+func HasNoteReposts() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, NoteRepostsTable, NoteRepostsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasNoteRepostsWith applies the HasEdge predicate on the "note_reposts" edge with a given conditions (other predicates).
+func HasNoteRepostsWith(preds ...predicate.NoteRepost) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newNoteRepostsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.User) predicate.User {
 	return predicate.User(sql.AndPredicates(predicates...))

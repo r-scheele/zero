@@ -73,10 +73,6 @@ func Primary(r *ui.Request, content Node) Node {
 							Div(
 								Class("max-w-7xl mx-auto"),
 								ID("main-content"),
-								If(len(r.Title) > 0, H1(
-									Class("text-3xl font-bold mb-8 text-slate-900"),
-									Text(r.Title),
-								)),
 								FlashMessages(r),
 								Div(
 									Class("space-y-6"),
@@ -98,10 +94,6 @@ func Primary(r *ui.Request, content Node) Node {
 								Div(
 									Class("max-w-7xl mx-auto"),
 									ID("main-content"),
-									If(len(r.Title) > 0, H1(
-										Class("text-3xl font-bold mb-8 text-slate-900"),
-										Text(r.Title),
-									)),
 									FlashMessages(r),
 									Div(
 										Class("space-y-6"),
@@ -202,13 +194,18 @@ func userSidebar(r *ui.Request) Node {
 	}
 
 	userMenuItem := func(icon Node, title, href string) Node {
-		// Path matching with special handling for profile section
+		// Path matching with special handling for profile and notes sections
 		isActive := r.CurrentPath == href
 		
-		// Special case for Profile section - highlight when in any profile-related pagtese
+		// Special case for Profile section - highlight when in any profile-related page
 		if href == "/profile" && (r.CurrentPath == "/profile" || r.CurrentPath == "/profile/edit" || 
 			r.CurrentPath == "/profile/update" || r.CurrentPath == "/profile/picture" || 
 			r.CurrentPath == "/profile/change-password" || r.CurrentPath == "/profile/deactivate") {
+			isActive = true
+		}
+		
+		// Special case for Notes section - highlight when in any notes-related page
+		if href == "/notes" && (strings.HasPrefix(r.CurrentPath, "/notes")) {
 			isActive = true
 		}
 
@@ -279,17 +276,17 @@ func userSidebar(r *ui.Request) Node {
 							// Unverified user - only show Home
 							Div(
 								Class("space-y-2"),
-								userMenuItem(icons.Home(), "Home", "/"),
+								userMenuItem(icons.Home(), "Home", "/home"),
 							),
 						),
 						If(r.AuthUser != nil && r.AuthUser.Verified,
 							// Verified user - show all navigation items
 							Div(
 								Class("space-y-2"),
-								userMenuItem(icons.Home(), "Home", "/"),
+								userMenuItem(icons.Home(), "Home", "/home"),
 								userMenuItem(icons.CircleStack(), "Dashboard", "/dashboard"),
 								userMenuItem(icons.Star(), "Quizzes", "/quizzes"),
-								userMenuItem(icons.Archive(), "Notes", "/summaries"),
+								userMenuItem(icons.Archive(), "Notes", "/notes"),
 								userMenuItem(icons.UserCircle(), "Profile", "/profile"),
 								userMenuItem(icons.Document(), "Files", "/files"), // Use direct path
 							),
@@ -336,7 +333,7 @@ func userBottomNavigation(r *ui.Request) Node {
 
 	// Bottom navigation item
 	userNavItem := func(icon Node, title, href string) Node {
-		// Path matching with special handling for profile section
+		// Path matching with special handling for profile and notes sections
 		isActive := r.CurrentPath == href
 		
 		// Special case for Profile section - highlight when in any profile-related page
@@ -345,11 +342,25 @@ func userBottomNavigation(r *ui.Request) Node {
 			r.CurrentPath == "/profile/change-password" || r.CurrentPath == "/profile/deactivate") {
 			isActive = true
 		}
+		
+		// Special case for Notes section - highlight when in any notes-related page
+		if href == "/notes" && (strings.HasPrefix(r.CurrentPath, "/notes")) {
+			isActive = true
+		}
 
 		var iconContainerClass string
 		var textClass string
 
-		if isActive {
+		// Special styling for Sign Out button
+		if title == "Sign Out" {
+			if isActive {
+				iconContainerClass = "flex items-center justify-center w-6 h-6 rounded-lg transition-all duration-300 bg-red-100 text-red-600"
+				textClass = "text-xs font-semibold transition-all duration-300 text-red-600"
+			} else {
+				iconContainerClass = "flex items-center justify-center w-6 h-6 rounded-lg transition-all duration-300 group-hover:bg-red-50"
+				textClass = "text-xs font-medium transition-all duration-300 text-red-600 group-hover:text-red-700"
+			}
+		} else if isActive {
 			iconContainerClass = "flex items-center justify-center w-6 h-6 rounded-lg transition-all duration-300 bg-blue-100 text-blue-600"
 			textClass = "text-xs font-semibold transition-all duration-300 text-blue-600"
 		} else {
@@ -381,65 +392,68 @@ func userBottomNavigation(r *ui.Request) Node {
 		Class("fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-lg border-t border-slate-200/50 px-4 py-2 shadow-2xl lg:hidden"),
 		Div(
 			Class("max-w-md mx-auto"),
-			Div(
-				Class("flex items-center justify-around"),
-				// Show only Home for unverified users
-				If(r.AuthUser != nil && !r.AuthUser.Verified,
-					userNavItem(icons.Home(), "Home", "/"),
+			// Use different layout for unverified vs verified users
+			If(r.AuthUser != nil && !r.AuthUser.Verified,
+				// Closer spacing for unverified users with only 2 buttons
+				Div(
+					Class("flex items-center justify-center gap-16"),
+					userNavItem(icons.Home(), "Home", "/home"),
+					userNavItem(icons.Exit(), "Sign Out", r.Path(routenames.Logout)),
 				),
-				// Show all nav items for verified users
-				If(r.AuthUser != nil && r.AuthUser.Verified, Group{
-					userNavItem(icons.Home(), "Home", "/"),
+			),
+			If(r.AuthUser != nil && r.AuthUser.Verified,
+				// Normal spacing for verified users with multiple buttons
+				Div(
+					Class("flex items-center justify-around"),
+					// Show all nav items for verified users
+					userNavItem(icons.Home(), "Home", "/home"),
 					userNavItem(icons.CircleStack(), "Dashboard", "/dashboard"),
 					userNavItem(icons.Star(), "Quizzes", "/quizzes"),
-					userNavItem(icons.Archive(), "Notes", "/summaries"),
-				}),
-				// More button for verified users only
-				If(r.AuthUser != nil && r.AuthUser.Verified,
-					// More button to show additional nav items - highlight when viewing any "More" section pages
+					userNavItem(icons.Archive(), "Notes", "/notes"),
+					// More button for verified users only
 					func() Node {
-					// Check if current page is in the "More" section
-					isMoreActive := r.CurrentPath == "/profile" || r.CurrentPath == "/files" ||
-						strings.HasPrefix(r.CurrentPath, "/profile/") ||
-						strings.HasPrefix(r.CurrentPath, "/admin") ||
-						r.CurrentPath == "/cache"
-					
-					var iconContainerClass string
-					var textClass string
-					
-					if isMoreActive {
-						iconContainerClass = "flex items-center justify-center w-6 h-6 rounded-lg transition-all duration-300 bg-blue-100 text-blue-600"
-						textClass = "text-xs font-semibold transition-all duration-300 text-blue-600"
-					} else {
-						iconContainerClass = "flex items-center justify-center w-6 h-6 rounded-lg transition-all duration-300 group-hover:bg-slate-100"
-						textClass = "text-xs font-medium transition-all duration-300 text-slate-500 group-hover:text-slate-700"
-					}
-					
-					return Button(
-						ID("more_nav_button"),
-						Class("flex flex-col items-center justify-center p-3 transition-all duration-300 ease-out rounded-2xl group"),
-						Attr("onclick", "document.getElementById('mobile_nav_modal').classList.toggle('hidden'); this.classList.toggle('more-active');"),
-						Div(
-							Class("relative mb-1"),
+						// Check if current page is in the "More" section
+						isMoreActive := r.CurrentPath == "/profile" || r.CurrentPath == "/files" ||
+							strings.HasPrefix(r.CurrentPath, "/profile/") ||
+							strings.HasPrefix(r.CurrentPath, "/admin") ||
+							r.CurrentPath == "/cache"
+						
+						var iconContainerClass string
+						var textClass string
+						
+						if isMoreActive {
+							iconContainerClass = "flex items-center justify-center w-6 h-6 rounded-lg transition-all duration-300 bg-blue-100 text-blue-600"
+							textClass = "text-xs font-semibold transition-all duration-300 text-blue-600"
+						} else {
+							iconContainerClass = "flex items-center justify-center w-6 h-6 rounded-lg transition-all duration-300 group-hover:bg-slate-100"
+							textClass = "text-xs font-medium transition-all duration-300 text-slate-500 group-hover:text-slate-700"
+						}
+						
+						return Button(
+							ID("more_nav_button"),
+							Class("flex flex-col items-center justify-center p-3 transition-all duration-300 ease-out rounded-2xl group"),
+							Attr("onclick", "document.getElementById('mobile_nav_modal').classList.toggle('hidden'); this.classList.toggle('more-active');"),
 							Div(
-								Class(iconContainerClass),
+								Class("relative mb-1"),
 								Div(
-									Class("w-4 h-4"),
-									Span(Class(func() string {
-										if isMoreActive {
-											return "text-blue-600 transition-colors duration-300"
-										}
-										return "text-slate-500 group-hover:text-slate-700 transition-colors duration-300"
-									}()), Text("⋮⋮")),
+									Class(iconContainerClass),
+									Div(
+										Class("w-4 h-4"),
+										Span(Class(func() string {
+											if isMoreActive {
+												return "text-blue-600 transition-colors duration-300"
+											}
+											return "text-slate-500 group-hover:text-slate-700 transition-colors duration-300"
+										}()), Text("⋮⋮")),
+									),
 								),
 							),
-						),
-						Span(
-							Class(textClass),
-							Text("More"),
-						),
-					)
-				}(),
+							Span(
+								Class(textClass),
+								Text("More"),
+							),
+						)
+					}(),
 				),
 			),
 		),
@@ -743,6 +757,16 @@ func unifiedFooter(r *ui.Request) Node {
 				// Simple links
 				Div(
 					Class("flex space-x-6 text-sm text-gray-600"),
+					A(
+						Href("/about"),
+						Class("hover:text-indigo-600 transition-colors"),
+						Text("About"),
+					),
+					A(
+						Href("/contact"),
+						Class("hover:text-indigo-600 transition-colors"),
+						Text("Contact"),
+					),
 					If(!r.IsAuth,
 						Group{
 							A(

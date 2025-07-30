@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 )
@@ -52,6 +51,12 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// EdgeOwner holds the string denoting the owner edge name in mutations.
 	EdgeOwner = "owner"
+	// EdgeNotes holds the string denoting the notes edge name in mutations.
+	EdgeNotes = "notes"
+	// EdgeNoteLikes holds the string denoting the note_likes edge name in mutations.
+	EdgeNoteLikes = "note_likes"
+	// EdgeNoteReposts holds the string denoting the note_reposts edge name in mutations.
+	EdgeNoteReposts = "note_reposts"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// OwnerTable is the table that holds the owner relation/edge.
@@ -61,6 +66,27 @@ const (
 	OwnerInverseTable = "password_tokens"
 	// OwnerColumn is the table column denoting the owner relation/edge.
 	OwnerColumn = "user_id"
+	// NotesTable is the table that holds the notes relation/edge.
+	NotesTable = "notes"
+	// NotesInverseTable is the table name for the Note entity.
+	// It exists in this package in order to avoid circular dependency with the "note" package.
+	NotesInverseTable = "notes"
+	// NotesColumn is the table column denoting the notes relation/edge.
+	NotesColumn = "user_notes"
+	// NoteLikesTable is the table that holds the note_likes relation/edge.
+	NoteLikesTable = "note_likes"
+	// NoteLikesInverseTable is the table name for the NoteLike entity.
+	// It exists in this package in order to avoid circular dependency with the "notelike" package.
+	NoteLikesInverseTable = "note_likes"
+	// NoteLikesColumn is the table column denoting the note_likes relation/edge.
+	NoteLikesColumn = "user_note_likes"
+	// NoteRepostsTable is the table that holds the note_reposts relation/edge.
+	NoteRepostsTable = "note_reposts"
+	// NoteRepostsInverseTable is the table name for the NoteRepost entity.
+	// It exists in this package in order to avoid circular dependency with the "noterepost" package.
+	NoteRepostsInverseTable = "note_reposts"
+	// NoteRepostsColumn is the table column denoting the note_reposts relation/edge.
+	NoteRepostsColumn = "user_note_reposts"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -95,13 +121,7 @@ func ValidColumn(column string) bool {
 	return false
 }
 
-// Note that the variables below are initialized by the runtime
-// package on the initialization of the application. Therefore,
-// it should be imported in the main as follows:
-//
-//	import _ "github.com/r-scheele/zero/ent/runtime"
 var (
-	Hooks [1]ent.Hook
 	// NameValidator is a validator for the "name" field. It is called by the builders before save.
 	NameValidator func(string) error
 	// PhoneNumberValidator is a validator for the "phone_number" field. It is called by the builders before save.
@@ -264,10 +284,73 @@ func ByOwner(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newOwnerStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByNotesCount orders the results by notes count.
+func ByNotesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newNotesStep(), opts...)
+	}
+}
+
+// ByNotes orders the results by notes terms.
+func ByNotes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newNotesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByNoteLikesCount orders the results by note_likes count.
+func ByNoteLikesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newNoteLikesStep(), opts...)
+	}
+}
+
+// ByNoteLikes orders the results by note_likes terms.
+func ByNoteLikes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newNoteLikesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByNoteRepostsCount orders the results by note_reposts count.
+func ByNoteRepostsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newNoteRepostsStep(), opts...)
+	}
+}
+
+// ByNoteReposts orders the results by note_reposts terms.
+func ByNoteReposts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newNoteRepostsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newOwnerStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(OwnerInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, true, OwnerTable, OwnerColumn),
+	)
+}
+func newNotesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(NotesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, NotesTable, NotesColumn),
+	)
+}
+func newNoteLikesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(NoteLikesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, NoteLikesTable, NoteLikesColumn),
+	)
+}
+func newNoteRepostsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(NoteRepostsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, NoteRepostsTable, NoteRepostsColumn),
 	)
 }

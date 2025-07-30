@@ -15,7 +15,7 @@ import (
 
 func AdminOverview(ctx echo.Context, orm *ent.Client) error {
 	r := ui.NewRequest(ctx)
-	r.Title = "Admin Dashboard"
+	r.Title = ""
 
 	// Get some basic statistics
 	totalUsers, _ := orm.User.Query().Count(context.Background())
@@ -23,18 +23,7 @@ func AdminOverview(ctx echo.Context, orm *ent.Client) error {
 	verifiedUsers, _ := orm.User.Query().Where(user.Verified(true)).Count(context.Background())
 
 	return r.Render(layouts.Admin, Group{
-		// Welcome message
-		Div(
-			Class("mb-8 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl p-6 border border-blue-200"),
-			H2(
-				Class("text-xl font-semibold text-blue-800 mb-2"),
-				Text("Welcome to Admin Dashboard"),
-			),
-			P(
-				Class("text-blue-700"),
-				Text("Manage your application, monitor system health, and perform administrative tasks."),
-			),
-		),
+
 
 		// Statistics Cards
 		Div(

@@ -8,7 +8,7 @@ import (
 	"github.com/labstack/echo/v4"
 	echomw "github.com/labstack/echo/v4/middleware"
 	"github.com/r-scheele/zero/pkg/context"
-	"github.com/r-scheele/zero/pkg/middleware"
+	mw "github.com/r-scheele/zero/pkg/middleware"
 	"github.com/r-scheele/zero/pkg/services"
 	files "github.com/r-scheele/zero/public"
 )
@@ -21,7 +21,7 @@ func BuildRouter(c *services.Container) error {
 	}
 
 	// Serve public files with cache control.
-	c.Web.Group("", middleware.CacheControl(c.Config.Cache.Expiration.PublicFile)).
+	c.Web.Group("", mw.CacheControl(c.Config.Cache.Expiration.PublicFile)).
 		Static("files", "public/files")
 
 	// Serve static files.
@@ -42,7 +42,7 @@ func BuildRouter(c *services.Container) error {
 				return true
 			},
 		}),
-		middleware.CacheControl(c.Config.Cache.Expiration.PublicFile),
+		mw.CacheControl(c.Config.Cache.Expiration.PublicFile),
 	).StaticFS("static", echo.MustSubFS(files.Static, "static"))
 
 	// Non-static file route group.
@@ -65,10 +65,15 @@ func BuildRouter(c *services.Container) error {
 			DisableErrorHandler: false,
 			DisablePrintStack:   false,
 		}),
-		echomw.Secure(),
+		mw.CORS(c.Config),
+		mw.RateLimit(c.Config),
+		mw.CSP(c.Config),
+		mw.RequestLogging(c.Config),
+		mw.HealthCheck(c.Config),
+		mw.Metrics(c.Config),
 		echomw.RequestID(),
-		middleware.SetLogger(),
-		middleware.LogRequest(),
+		mw.SetLogger(),
+		mw.LogRequest(),
 		echomw.Gzip(),
 		// Temporarily removed timeout middleware due to Go stdlib panic
 		// echomw.TimeoutWithConfig(echomw.TimeoutConfig{
@@ -82,13 +87,24 @@ func BuildRouter(c *services.Container) error {
 		//			strings.HasPrefix(path, "/files/")
 		//	},
 		// }),
-		middleware.Config(c.Config),
-		middleware.Session(cookieStore),
-		middleware.LoadAuthenticatedUser(c.Auth),
+		mw.Config(c.Config),
+		mw.Session(cookieStore),
+		mw.LoadAuthenticatedUser(c.Auth),
+		mw.ResponseCache(mw.ResponseCacheConfig{
+			Cache:      c.Cache,
+			Config:     c.Config,
+			Expiration: c.Config.Cache.Expiration.PublicNotes,
+		}),
 		echomw.CSRFWithConfig(echomw.CSRFConfig{
 			TokenLookup:    "form:csrf",
+			CookieName:     "csrf",
 			CookieHTTPOnly: true,
-			CookieSameSite: http.SameSiteStrictMode,
+			CookieSameSite: func() http.SameSite {
+				if c.Config.Security.CSP.Enabled {
+					return http.SameSiteStrictMode
+				}
+				return http.SameSiteLaxMode
+			}(),
 			ContextKey:     context.CSRFKey,
 		}),
 	)

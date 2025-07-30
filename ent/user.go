@@ -61,9 +61,15 @@ type User struct {
 type UserEdges struct {
 	// Owner holds the value of the owner edge.
 	Owner []*PasswordToken `json:"owner,omitempty"`
+	// Notes holds the value of the notes edge.
+	Notes []*Note `json:"notes,omitempty"`
+	// NoteLikes holds the value of the note_likes edge.
+	NoteLikes []*NoteLike `json:"note_likes,omitempty"`
+	// NoteReposts holds the value of the note_reposts edge.
+	NoteReposts []*NoteRepost `json:"note_reposts,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [4]bool
 }
 
 // OwnerOrErr returns the Owner value or an error if the edge
@@ -73,6 +79,33 @@ func (e UserEdges) OwnerOrErr() ([]*PasswordToken, error) {
 		return e.Owner, nil
 	}
 	return nil, &NotLoadedError{edge: "owner"}
+}
+
+// NotesOrErr returns the Notes value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) NotesOrErr() ([]*Note, error) {
+	if e.loadedTypes[1] {
+		return e.Notes, nil
+	}
+	return nil, &NotLoadedError{edge: "notes"}
+}
+
+// NoteLikesOrErr returns the NoteLikes value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) NoteLikesOrErr() ([]*NoteLike, error) {
+	if e.loadedTypes[2] {
+		return e.NoteLikes, nil
+	}
+	return nil, &NotLoadedError{edge: "note_likes"}
+}
+
+// NoteRepostsOrErr returns the NoteReposts value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) NoteRepostsOrErr() ([]*NoteRepost, error) {
+	if e.loadedTypes[3] {
+		return e.NoteReposts, nil
+	}
+	return nil, &NotLoadedError{edge: "note_reposts"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -233,6 +266,21 @@ func (u *User) Value(name string) (ent.Value, error) {
 // QueryOwner queries the "owner" edge of the User entity.
 func (u *User) QueryOwner() *PasswordTokenQuery {
 	return NewUserClient(u.config).QueryOwner(u)
+}
+
+// QueryNotes queries the "notes" edge of the User entity.
+func (u *User) QueryNotes() *NoteQuery {
+	return NewUserClient(u.config).QueryNotes(u)
+}
+
+// QueryNoteLikes queries the "note_likes" edge of the User entity.
+func (u *User) QueryNoteLikes() *NoteLikeQuery {
+	return NewUserClient(u.config).QueryNoteLikes(u)
+}
+
+// QueryNoteReposts queries the "note_reposts" edge of the User entity.
+func (u *User) QueryNoteReposts() *NoteRepostQuery {
+	return NewUserClient(u.config).QueryNoteReposts(u)
 }
 
 // Update returns a builder for updating this User.

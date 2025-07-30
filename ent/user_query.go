@@ -12,6 +12,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/r-scheele/zero/ent/note"
+	"github.com/r-scheele/zero/ent/notelike"
+	"github.com/r-scheele/zero/ent/noterepost"
 	"github.com/r-scheele/zero/ent/passwordtoken"
 	"github.com/r-scheele/zero/ent/predicate"
 	"github.com/r-scheele/zero/ent/user"
@@ -20,11 +23,14 @@ import (
 // UserQuery is the builder for querying User entities.
 type UserQuery struct {
 	config
-	ctx        *QueryContext
-	order      []user.OrderOption
-	inters     []Interceptor
-	predicates []predicate.User
-	withOwner  *PasswordTokenQuery
+	ctx             *QueryContext
+	order           []user.OrderOption
+	inters          []Interceptor
+	predicates      []predicate.User
+	withOwner       *PasswordTokenQuery
+	withNotes       *NoteQuery
+	withNoteLikes   *NoteLikeQuery
+	withNoteReposts *NoteRepostQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -76,6 +82,72 @@ func (uq *UserQuery) QueryOwner() *PasswordTokenQuery {
 			sqlgraph.From(user.Table, user.FieldID, selector),
 			sqlgraph.To(passwordtoken.Table, passwordtoken.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, true, user.OwnerTable, user.OwnerColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(uq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryNotes chains the current query on the "notes" edge.
+func (uq *UserQuery) QueryNotes() *NoteQuery {
+	query := (&NoteClient{config: uq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := uq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := uq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(note.Table, note.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.NotesTable, user.NotesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(uq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryNoteLikes chains the current query on the "note_likes" edge.
+func (uq *UserQuery) QueryNoteLikes() *NoteLikeQuery {
+	query := (&NoteLikeClient{config: uq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := uq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := uq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(notelike.Table, notelike.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.NoteLikesTable, user.NoteLikesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(uq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryNoteReposts chains the current query on the "note_reposts" edge.
+func (uq *UserQuery) QueryNoteReposts() *NoteRepostQuery {
+	query := (&NoteRepostClient{config: uq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := uq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := uq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(noterepost.Table, noterepost.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.NoteRepostsTable, user.NoteRepostsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(uq.driver.Dialect(), step)
 		return fromU, nil
@@ -270,12 +342,15 @@ func (uq *UserQuery) Clone() *UserQuery {
 		return nil
 	}
 	return &UserQuery{
-		config:     uq.config,
-		ctx:        uq.ctx.Clone(),
-		order:      append([]user.OrderOption{}, uq.order...),
-		inters:     append([]Interceptor{}, uq.inters...),
-		predicates: append([]predicate.User{}, uq.predicates...),
-		withOwner:  uq.withOwner.Clone(),
+		config:          uq.config,
+		ctx:             uq.ctx.Clone(),
+		order:           append([]user.OrderOption{}, uq.order...),
+		inters:          append([]Interceptor{}, uq.inters...),
+		predicates:      append([]predicate.User{}, uq.predicates...),
+		withOwner:       uq.withOwner.Clone(),
+		withNotes:       uq.withNotes.Clone(),
+		withNoteLikes:   uq.withNoteLikes.Clone(),
+		withNoteReposts: uq.withNoteReposts.Clone(),
 		// clone intermediate query.
 		sql:  uq.sql.Clone(),
 		path: uq.path,
@@ -290,6 +365,39 @@ func (uq *UserQuery) WithOwner(opts ...func(*PasswordTokenQuery)) *UserQuery {
 		opt(query)
 	}
 	uq.withOwner = query
+	return uq
+}
+
+// WithNotes tells the query-builder to eager-load the nodes that are connected to
+// the "notes" edge. The optional arguments are used to configure the query builder of the edge.
+func (uq *UserQuery) WithNotes(opts ...func(*NoteQuery)) *UserQuery {
+	query := (&NoteClient{config: uq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	uq.withNotes = query
+	return uq
+}
+
+// WithNoteLikes tells the query-builder to eager-load the nodes that are connected to
+// the "note_likes" edge. The optional arguments are used to configure the query builder of the edge.
+func (uq *UserQuery) WithNoteLikes(opts ...func(*NoteLikeQuery)) *UserQuery {
+	query := (&NoteLikeClient{config: uq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	uq.withNoteLikes = query
+	return uq
+}
+
+// WithNoteReposts tells the query-builder to eager-load the nodes that are connected to
+// the "note_reposts" edge. The optional arguments are used to configure the query builder of the edge.
+func (uq *UserQuery) WithNoteReposts(opts ...func(*NoteRepostQuery)) *UserQuery {
+	query := (&NoteRepostClient{config: uq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	uq.withNoteReposts = query
 	return uq
 }
 
@@ -371,8 +479,11 @@ func (uq *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = uq.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [4]bool{
 			uq.withOwner != nil,
+			uq.withNotes != nil,
+			uq.withNoteLikes != nil,
+			uq.withNoteReposts != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -397,6 +508,27 @@ func (uq *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 		if err := uq.loadOwner(ctx, query, nodes,
 			func(n *User) { n.Edges.Owner = []*PasswordToken{} },
 			func(n *User, e *PasswordToken) { n.Edges.Owner = append(n.Edges.Owner, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := uq.withNotes; query != nil {
+		if err := uq.loadNotes(ctx, query, nodes,
+			func(n *User) { n.Edges.Notes = []*Note{} },
+			func(n *User, e *Note) { n.Edges.Notes = append(n.Edges.Notes, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := uq.withNoteLikes; query != nil {
+		if err := uq.loadNoteLikes(ctx, query, nodes,
+			func(n *User) { n.Edges.NoteLikes = []*NoteLike{} },
+			func(n *User, e *NoteLike) { n.Edges.NoteLikes = append(n.Edges.NoteLikes, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := uq.withNoteReposts; query != nil {
+		if err := uq.loadNoteReposts(ctx, query, nodes,
+			func(n *User) { n.Edges.NoteReposts = []*NoteRepost{} },
+			func(n *User, e *NoteRepost) { n.Edges.NoteReposts = append(n.Edges.NoteReposts, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -428,6 +560,99 @@ func (uq *UserQuery) loadOwner(ctx context.Context, query *PasswordTokenQuery, n
 		node, ok := nodeids[fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (uq *UserQuery) loadNotes(ctx context.Context, query *NoteQuery, nodes []*User, init func(*User), assign func(*User, *Note)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.Note(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.NotesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.user_notes
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "user_notes" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_notes" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (uq *UserQuery) loadNoteLikes(ctx context.Context, query *NoteLikeQuery, nodes []*User, init func(*User), assign func(*User, *NoteLike)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.NoteLike(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.NoteLikesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.user_note_likes
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "user_note_likes" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_note_likes" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (uq *UserQuery) loadNoteReposts(ctx context.Context, query *NoteRepostQuery, nodes []*User, init func(*User), assign func(*User, *NoteRepost)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	query.withFKs = true
+	query.Where(predicate.NoteRepost(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.NoteRepostsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.user_note_reposts
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "user_note_reposts" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_note_reposts" returned %v for node %v`, *fk, n.ID)
 		}
 		assign(node, n)
 	}

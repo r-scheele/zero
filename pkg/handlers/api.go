@@ -544,9 +544,17 @@ func (h *API) ChangePassword(ctx echo.Context) error {
 		})
 	}
 
+	// Hash the new password before storing
+	hashedPassword, err := h.auth.HashPassword(input.NewPassword)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "Failed to hash password",
+		})
+	}
+
 	// Update password
-	_, err := h.orm.User.UpdateOneID(u.ID).
-		SetPassword(input.NewPassword).
+	_, err = h.orm.User.UpdateOneID(u.ID).
+		SetPassword(hashedPassword).
 		Save(ctx.Request().Context())
 
 	if err != nil {

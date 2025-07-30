@@ -102,7 +102,7 @@ func adminHeaderSimple(r *ui.Request) Node {
 					Class("flex items-center gap-3 sm:gap-4 lg:gap-5 flex-shrink-0"),
 					// Logo
 					A(
-						Href(r.Path(routenames.Home)),
+						Href("/home"),
 						Class("flex items-center gap-2 sm:gap-3 lg:gap-4 text-base sm:text-lg lg:text-xl font-bold text-slate-800 hover:text-indigo-600 transition-all duration-300 ease-out"),
 						Div(
 							Class("w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center"),
@@ -243,7 +243,8 @@ func adminSidebar(r *ui.Request) Node {
 					HxBoost(),
 					adminMenuItem(r, icons.Home(), "Overview", "/admin"),
 					adminMenuItem(r, icons.UserCircle(), "Users", "/admin/entity/user"),
-					adminMenuItem(r, icons.Archive(), "Cache Management", r.Path(routenames.Cache)),
+					adminMenuItem(r, icons.Document(), "Notes", "/admin/entity/note"),
+					adminMenuItem(r, icons.Archive(), "Cache Management", "/admin/cache"),
 					adminMenuItem(r, icons.CircleStack(), "Background Tasks", r.Path(routenames.AdminTasks)),
 				),
 				// Spacer to push Sign Out to bottom
@@ -336,10 +337,10 @@ func adminBottomNavigation(r *ui.Request) Node {
 			Div(
 				Class("flex items-center justify-around"),
 				adminBottomNavItem(r, icons.Home(), "Overview", "/admin"),
-				adminBottomNavItem(r, icons.UserCircle(), "Users", "/admin/entity/user"),
-				adminBottomNavItem(r, icons.Archive(), "Cache", r.Path(routenames.Cache)),
-				adminBottomNavItem(r, icons.CircleStack(), "Tasks", r.Path(routenames.AdminTasks)),
-				adminBottomNavItem(r, icons.Exit(), "Logout", r.Path(routenames.Logout)),
+			adminBottomNavItem(r, icons.UserCircle(), "Users", "/admin/entity/user"),
+			adminBottomNavItem(r, icons.Archive(), "Cache", r.Path(routenames.Cache)),
+			adminBottomNavItem(r, icons.CircleStack(), "Tasks", r.Path(routenames.AdminTasks)),
+			adminBottomNavItem(r, icons.Exit(), "Logout", r.Path(routenames.Logout)),
 			),
 		),
 	)

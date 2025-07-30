@@ -15,6 +15,9 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/r-scheele/zero/ent/note"
+	"github.com/r-scheele/zero/ent/notelike"
+	"github.com/r-scheele/zero/ent/noterepost"
 	"github.com/r-scheele/zero/ent/passwordtoken"
 	"github.com/r-scheele/zero/ent/user"
 )
@@ -24,6 +27,12 @@ type Client struct {
 	config
 	// Schema is the client for creating, migrating and dropping schema.
 	Schema *migrate.Schema
+	// Note is the client for interacting with the Note builders.
+	Note *NoteClient
+	// NoteLike is the client for interacting with the NoteLike builders.
+	NoteLike *NoteLikeClient
+	// NoteRepost is the client for interacting with the NoteRepost builders.
+	NoteRepost *NoteRepostClient
 	// PasswordToken is the client for interacting with the PasswordToken builders.
 	PasswordToken *PasswordTokenClient
 	// User is the client for interacting with the User builders.
@@ -39,6 +48,9 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
+	c.Note = NewNoteClient(c.config)
+	c.NoteLike = NewNoteLikeClient(c.config)
+	c.NoteRepost = NewNoteRepostClient(c.config)
 	c.PasswordToken = NewPasswordTokenClient(c.config)
 	c.User = NewUserClient(c.config)
 }
@@ -133,6 +145,9 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	return &Tx{
 		ctx:           ctx,
 		config:        cfg,
+		Note:          NewNoteClient(cfg),
+		NoteLike:      NewNoteLikeClient(cfg),
+		NoteRepost:    NewNoteRepostClient(cfg),
 		PasswordToken: NewPasswordTokenClient(cfg),
 		User:          NewUserClient(cfg),
 	}, nil
@@ -154,6 +169,9 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	return &Tx{
 		ctx:           ctx,
 		config:        cfg,
+		Note:          NewNoteClient(cfg),
+		NoteLike:      NewNoteLikeClient(cfg),
+		NoteRepost:    NewNoteRepostClient(cfg),
 		PasswordToken: NewPasswordTokenClient(cfg),
 		User:          NewUserClient(cfg),
 	}, nil
@@ -162,7 +180,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 // Debug returns a new debug-client. It's used to get verbose logging on specific operations.
 //
 //	client.Debug().
-//		PasswordToken.
+//		Note.
 //		Query().
 //		Count(ctx)
 func (c *Client) Debug() *Client {
@@ -184,6 +202,9 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
+	c.Note.Use(hooks...)
+	c.NoteLike.Use(hooks...)
+	c.NoteRepost.Use(hooks...)
 	c.PasswordToken.Use(hooks...)
 	c.User.Use(hooks...)
 }
@@ -191,6 +212,9 @@ func (c *Client) Use(hooks ...Hook) {
 // Intercept adds the query interceptors to all the entity clients.
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
+	c.Note.Intercept(interceptors...)
+	c.NoteLike.Intercept(interceptors...)
+	c.NoteRepost.Intercept(interceptors...)
 	c.PasswordToken.Intercept(interceptors...)
 	c.User.Intercept(interceptors...)
 }
@@ -198,12 +222,529 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 // Mutate implements the ent.Mutator interface.
 func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
+	case *NoteMutation:
+		return c.Note.mutate(ctx, m)
+	case *NoteLikeMutation:
+		return c.NoteLike.mutate(ctx, m)
+	case *NoteRepostMutation:
+		return c.NoteRepost.mutate(ctx, m)
 	case *PasswordTokenMutation:
 		return c.PasswordToken.mutate(ctx, m)
 	case *UserMutation:
 		return c.User.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
+	}
+}
+
+// NoteClient is a client for the Note schema.
+type NoteClient struct {
+	config
+}
+
+// NewNoteClient returns a client for the Note from the given config.
+func NewNoteClient(c config) *NoteClient {
+	return &NoteClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `note.Hooks(f(g(h())))`.
+func (c *NoteClient) Use(hooks ...Hook) {
+	c.hooks.Note = append(c.hooks.Note, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `note.Intercept(f(g(h())))`.
+func (c *NoteClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Note = append(c.inters.Note, interceptors...)
+}
+
+// Create returns a builder for creating a Note entity.
+func (c *NoteClient) Create() *NoteCreate {
+	mutation := newNoteMutation(c.config, OpCreate)
+	return &NoteCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Note entities.
+func (c *NoteClient) CreateBulk(builders ...*NoteCreate) *NoteCreateBulk {
+	return &NoteCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *NoteClient) MapCreateBulk(slice any, setFunc func(*NoteCreate, int)) *NoteCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &NoteCreateBulk{err: fmt.Errorf("calling to NoteClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*NoteCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &NoteCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Note.
+func (c *NoteClient) Update() *NoteUpdate {
+	mutation := newNoteMutation(c.config, OpUpdate)
+	return &NoteUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *NoteClient) UpdateOne(n *Note) *NoteUpdateOne {
+	mutation := newNoteMutation(c.config, OpUpdateOne, withNote(n))
+	return &NoteUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *NoteClient) UpdateOneID(id int) *NoteUpdateOne {
+	mutation := newNoteMutation(c.config, OpUpdateOne, withNoteID(id))
+	return &NoteUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Note.
+func (c *NoteClient) Delete() *NoteDelete {
+	mutation := newNoteMutation(c.config, OpDelete)
+	return &NoteDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *NoteClient) DeleteOne(n *Note) *NoteDeleteOne {
+	return c.DeleteOneID(n.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *NoteClient) DeleteOneID(id int) *NoteDeleteOne {
+	builder := c.Delete().Where(note.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &NoteDeleteOne{builder}
+}
+
+// Query returns a query builder for Note.
+func (c *NoteClient) Query() *NoteQuery {
+	return &NoteQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeNote},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Note entity by its id.
+func (c *NoteClient) Get(ctx context.Context, id int) (*Note, error) {
+	return c.Query().Where(note.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *NoteClient) GetX(ctx context.Context, id int) *Note {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryOwner queries the owner edge of a Note.
+func (c *NoteClient) QueryOwner(n *Note) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := n.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(note.Table, note.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, note.OwnerTable, note.OwnerColumn),
+		)
+		fromV = sqlgraph.Neighbors(n.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryLikes queries the likes edge of a Note.
+func (c *NoteClient) QueryLikes(n *Note) *NoteLikeQuery {
+	query := (&NoteLikeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := n.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(note.Table, note.FieldID, id),
+			sqlgraph.To(notelike.Table, notelike.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, note.LikesTable, note.LikesColumn),
+		)
+		fromV = sqlgraph.Neighbors(n.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryReposts queries the reposts edge of a Note.
+func (c *NoteClient) QueryReposts(n *Note) *NoteRepostQuery {
+	query := (&NoteRepostClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := n.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(note.Table, note.FieldID, id),
+			sqlgraph.To(noterepost.Table, noterepost.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, note.RepostsTable, note.RepostsColumn),
+		)
+		fromV = sqlgraph.Neighbors(n.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *NoteClient) Hooks() []Hook {
+	return c.hooks.Note
+}
+
+// Interceptors returns the client interceptors.
+func (c *NoteClient) Interceptors() []Interceptor {
+	return c.inters.Note
+}
+
+func (c *NoteClient) mutate(ctx context.Context, m *NoteMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&NoteCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&NoteUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&NoteUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&NoteDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Note mutation op: %q", m.Op())
+	}
+}
+
+// NoteLikeClient is a client for the NoteLike schema.
+type NoteLikeClient struct {
+	config
+}
+
+// NewNoteLikeClient returns a client for the NoteLike from the given config.
+func NewNoteLikeClient(c config) *NoteLikeClient {
+	return &NoteLikeClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `notelike.Hooks(f(g(h())))`.
+func (c *NoteLikeClient) Use(hooks ...Hook) {
+	c.hooks.NoteLike = append(c.hooks.NoteLike, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `notelike.Intercept(f(g(h())))`.
+func (c *NoteLikeClient) Intercept(interceptors ...Interceptor) {
+	c.inters.NoteLike = append(c.inters.NoteLike, interceptors...)
+}
+
+// Create returns a builder for creating a NoteLike entity.
+func (c *NoteLikeClient) Create() *NoteLikeCreate {
+	mutation := newNoteLikeMutation(c.config, OpCreate)
+	return &NoteLikeCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of NoteLike entities.
+func (c *NoteLikeClient) CreateBulk(builders ...*NoteLikeCreate) *NoteLikeCreateBulk {
+	return &NoteLikeCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *NoteLikeClient) MapCreateBulk(slice any, setFunc func(*NoteLikeCreate, int)) *NoteLikeCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &NoteLikeCreateBulk{err: fmt.Errorf("calling to NoteLikeClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*NoteLikeCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &NoteLikeCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for NoteLike.
+func (c *NoteLikeClient) Update() *NoteLikeUpdate {
+	mutation := newNoteLikeMutation(c.config, OpUpdate)
+	return &NoteLikeUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *NoteLikeClient) UpdateOne(nl *NoteLike) *NoteLikeUpdateOne {
+	mutation := newNoteLikeMutation(c.config, OpUpdateOne, withNoteLike(nl))
+	return &NoteLikeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *NoteLikeClient) UpdateOneID(id int) *NoteLikeUpdateOne {
+	mutation := newNoteLikeMutation(c.config, OpUpdateOne, withNoteLikeID(id))
+	return &NoteLikeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for NoteLike.
+func (c *NoteLikeClient) Delete() *NoteLikeDelete {
+	mutation := newNoteLikeMutation(c.config, OpDelete)
+	return &NoteLikeDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *NoteLikeClient) DeleteOne(nl *NoteLike) *NoteLikeDeleteOne {
+	return c.DeleteOneID(nl.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *NoteLikeClient) DeleteOneID(id int) *NoteLikeDeleteOne {
+	builder := c.Delete().Where(notelike.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &NoteLikeDeleteOne{builder}
+}
+
+// Query returns a query builder for NoteLike.
+func (c *NoteLikeClient) Query() *NoteLikeQuery {
+	return &NoteLikeQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeNoteLike},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a NoteLike entity by its id.
+func (c *NoteLikeClient) Get(ctx context.Context, id int) (*NoteLike, error) {
+	return c.Query().Where(notelike.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *NoteLikeClient) GetX(ctx context.Context, id int) *NoteLike {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a NoteLike.
+func (c *NoteLikeClient) QueryUser(nl *NoteLike) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := nl.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(notelike.Table, notelike.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, notelike.UserTable, notelike.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(nl.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryNote queries the note edge of a NoteLike.
+func (c *NoteLikeClient) QueryNote(nl *NoteLike) *NoteQuery {
+	query := (&NoteClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := nl.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(notelike.Table, notelike.FieldID, id),
+			sqlgraph.To(note.Table, note.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, notelike.NoteTable, notelike.NoteColumn),
+		)
+		fromV = sqlgraph.Neighbors(nl.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *NoteLikeClient) Hooks() []Hook {
+	return c.hooks.NoteLike
+}
+
+// Interceptors returns the client interceptors.
+func (c *NoteLikeClient) Interceptors() []Interceptor {
+	return c.inters.NoteLike
+}
+
+func (c *NoteLikeClient) mutate(ctx context.Context, m *NoteLikeMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&NoteLikeCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&NoteLikeUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&NoteLikeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&NoteLikeDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown NoteLike mutation op: %q", m.Op())
+	}
+}
+
+// NoteRepostClient is a client for the NoteRepost schema.
+type NoteRepostClient struct {
+	config
+}
+
+// NewNoteRepostClient returns a client for the NoteRepost from the given config.
+func NewNoteRepostClient(c config) *NoteRepostClient {
+	return &NoteRepostClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `noterepost.Hooks(f(g(h())))`.
+func (c *NoteRepostClient) Use(hooks ...Hook) {
+	c.hooks.NoteRepost = append(c.hooks.NoteRepost, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `noterepost.Intercept(f(g(h())))`.
+func (c *NoteRepostClient) Intercept(interceptors ...Interceptor) {
+	c.inters.NoteRepost = append(c.inters.NoteRepost, interceptors...)
+}
+
+// Create returns a builder for creating a NoteRepost entity.
+func (c *NoteRepostClient) Create() *NoteRepostCreate {
+	mutation := newNoteRepostMutation(c.config, OpCreate)
+	return &NoteRepostCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of NoteRepost entities.
+func (c *NoteRepostClient) CreateBulk(builders ...*NoteRepostCreate) *NoteRepostCreateBulk {
+	return &NoteRepostCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *NoteRepostClient) MapCreateBulk(slice any, setFunc func(*NoteRepostCreate, int)) *NoteRepostCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &NoteRepostCreateBulk{err: fmt.Errorf("calling to NoteRepostClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*NoteRepostCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &NoteRepostCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for NoteRepost.
+func (c *NoteRepostClient) Update() *NoteRepostUpdate {
+	mutation := newNoteRepostMutation(c.config, OpUpdate)
+	return &NoteRepostUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *NoteRepostClient) UpdateOne(nr *NoteRepost) *NoteRepostUpdateOne {
+	mutation := newNoteRepostMutation(c.config, OpUpdateOne, withNoteRepost(nr))
+	return &NoteRepostUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *NoteRepostClient) UpdateOneID(id int) *NoteRepostUpdateOne {
+	mutation := newNoteRepostMutation(c.config, OpUpdateOne, withNoteRepostID(id))
+	return &NoteRepostUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for NoteRepost.
+func (c *NoteRepostClient) Delete() *NoteRepostDelete {
+	mutation := newNoteRepostMutation(c.config, OpDelete)
+	return &NoteRepostDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *NoteRepostClient) DeleteOne(nr *NoteRepost) *NoteRepostDeleteOne {
+	return c.DeleteOneID(nr.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *NoteRepostClient) DeleteOneID(id int) *NoteRepostDeleteOne {
+	builder := c.Delete().Where(noterepost.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &NoteRepostDeleteOne{builder}
+}
+
+// Query returns a query builder for NoteRepost.
+func (c *NoteRepostClient) Query() *NoteRepostQuery {
+	return &NoteRepostQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeNoteRepost},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a NoteRepost entity by its id.
+func (c *NoteRepostClient) Get(ctx context.Context, id int) (*NoteRepost, error) {
+	return c.Query().Where(noterepost.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *NoteRepostClient) GetX(ctx context.Context, id int) *NoteRepost {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a NoteRepost.
+func (c *NoteRepostClient) QueryUser(nr *NoteRepost) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := nr.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(noterepost.Table, noterepost.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, noterepost.UserTable, noterepost.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(nr.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryNote queries the note edge of a NoteRepost.
+func (c *NoteRepostClient) QueryNote(nr *NoteRepost) *NoteQuery {
+	query := (&NoteClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := nr.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(noterepost.Table, noterepost.FieldID, id),
+			sqlgraph.To(note.Table, note.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, noterepost.NoteTable, noterepost.NoteColumn),
+		)
+		fromV = sqlgraph.Neighbors(nr.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *NoteRepostClient) Hooks() []Hook {
+	return c.hooks.NoteRepost
+}
+
+// Interceptors returns the client interceptors.
+func (c *NoteRepostClient) Interceptors() []Interceptor {
+	return c.inters.NoteRepost
+}
+
+func (c *NoteRepostClient) mutate(ctx context.Context, m *NoteRepostMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&NoteRepostCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&NoteRepostUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&NoteRepostUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&NoteRepostDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown NoteRepost mutation op: %q", m.Op())
 	}
 }
 
@@ -333,8 +874,7 @@ func (c *PasswordTokenClient) QueryUser(pt *PasswordToken) *UserQuery {
 
 // Hooks returns the client hooks.
 func (c *PasswordTokenClient) Hooks() []Hook {
-	hooks := c.hooks.PasswordToken
-	return append(hooks[:len(hooks):len(hooks)], passwordtoken.Hooks[:]...)
+	return c.hooks.PasswordToken
 }
 
 // Interceptors returns the client interceptors.
@@ -481,10 +1021,57 @@ func (c *UserClient) QueryOwner(u *User) *PasswordTokenQuery {
 	return query
 }
 
+// QueryNotes queries the notes edge of a User.
+func (c *UserClient) QueryNotes(u *User) *NoteQuery {
+	query := (&NoteClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := u.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(note.Table, note.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.NotesTable, user.NotesColumn),
+		)
+		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryNoteLikes queries the note_likes edge of a User.
+func (c *UserClient) QueryNoteLikes(u *User) *NoteLikeQuery {
+	query := (&NoteLikeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := u.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(notelike.Table, notelike.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.NoteLikesTable, user.NoteLikesColumn),
+		)
+		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryNoteReposts queries the note_reposts edge of a User.
+func (c *UserClient) QueryNoteReposts(u *User) *NoteRepostQuery {
+	query := (&NoteRepostClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := u.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(noterepost.Table, noterepost.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.NoteRepostsTable, user.NoteRepostsColumn),
+		)
+		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *UserClient) Hooks() []Hook {
-	hooks := c.hooks.User
-	return append(hooks[:len(hooks):len(hooks)], user.Hooks[:]...)
+	return c.hooks.User
 }
 
 // Interceptors returns the client interceptors.
@@ -510,9 +1097,9 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		PasswordToken, User []ent.Hook
+		Note, NoteLike, NoteRepost, PasswordToken, User []ent.Hook
 	}
 	inters struct {
-		PasswordToken, User []ent.Interceptor
+		Note, NoteLike, NoteRepost, PasswordToken, User []ent.Interceptor
 	}
 )

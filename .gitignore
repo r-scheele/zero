@@ -20,10 +20,9 @@ build/
 dist/
 
 # Project binaries
-
 ./admin
 ./web
-
+./handlers.test
 # Tailwind CSS binary (if downloaded manually)
 tailwindcss
 daisyui*

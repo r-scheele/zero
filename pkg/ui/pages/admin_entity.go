@@ -3,10 +3,10 @@ package pages
 import (
 	"fmt"
 	"net/url"
+	"strings"
 
 	"entgo.io/ent/entc/load"
 	"github.com/labstack/echo/v4"
-	"github.com/r-scheele/zero/ent/admin"
 	"github.com/r-scheele/zero/pkg/routenames"
 	"github.com/r-scheele/zero/pkg/ui"
 	. "github.com/r-scheele/zero/pkg/ui/components"
@@ -46,13 +46,17 @@ func AdminEntityView(ctx echo.Context, entityTypeName string, entity map[string]
 					Class("grid grid-cols-1 md:grid-cols-2 gap-4"),
 					Group(func() []Node {
 						var fields []Node
-						fields = append(fields,
-							Div(
-								Class("border-b pb-2 mb-2"),
-								Dt(Class("text-sm font-medium text-gray-500"), Text("ID")),
-								Dd(Class("text-sm text-gray-900"), Text(fmt.Sprint(id))),
-							),
-						)
+						
+						// Only show ID for entities other than Note
+						if entityTypeName != "Note" {
+							fields = append(fields,
+								Div(
+									Class("border-b pb-2 mb-2"),
+									Dt(Class("text-sm font-medium text-gray-500"), Text("ID")),
+									Dd(Class("text-sm text-gray-900"), Text(fmt.Sprint(id))),
+								),
+							)
+						}
 						for key, values := range entity {
 							if len(values) > 0 {
 								fields = append(fields,
@@ -95,10 +99,24 @@ func AdminEntityInput(ctx echo.Context, schema *load.Schema, values url.Values) 
 	)
 }
 
+// Temporary placeholder types to replace admin functionality
+type EntityList struct {
+	Columns     []string
+	Rows        []EntityValues
+	Entities    []EntityValues
+	Page        int
+	HasNextPage bool
+}
+
+type EntityValues struct {
+	ID     int
+	Values []string
+}
+
 func AdminEntityList(
 	ctx echo.Context,
 	entityTypeName string,
-	entityList *admin.EntityList,
+	entityList *EntityList,
 ) error {
 	r := ui.NewRequest(ctx)
 	r.Title = ""
@@ -144,7 +162,7 @@ func AdminEntityList(
 		return g
 	}
 
-	genRow := func(row admin.EntityValues) Node {
+	genRow := func(row EntityValues) Node {
 		if entityTypeName == "User" {
 			// For User entity, make entire row clickable with responsive column visibility
 			g := make(Group, 0, len(row.Values)+1)
@@ -178,6 +196,36 @@ func AdminEntityList(
 				}
 			}
 
+			return Tr(
+				Class("cursor-pointer hover:bg-blue-50 transition-colors"),
+				Attr("hx-get", r.Path(routenames.AdminEntityView(entityTypeName), row.ID)),
+				Attr("hx-push-url", "true"),
+				Attr("hx-target", "#main-content"),
+				g,
+			)
+		} else if entityTypeName == "Note" {
+			// For Note entity, make rows clickable without Edit/Delete buttons
+			g := make(Group, 0, len(row.Values)+1)
+			g = append(g, Th(Text(fmt.Sprint(row.ID))))
+			for _, h := range row.Values {
+				g = append(g, Td(Text(h)))
+			}
+			return Tr(
+				Class("cursor-pointer hover:bg-blue-50 transition-colors"),
+				Attr("hx-get", r.Path(routenames.AdminEntityView(entityTypeName), row.ID)),
+				Attr("hx-push-url", "true"),
+				Attr("hx-target", "#main-content"),
+				g,
+			)
+		} else if entityTypeName == "Note" {
+			// For Note entity, make entire row clickable without ID column
+			g := make(Group, 0, len(row.Values))
+			
+			// Skip adding ID column for Notes
+			for _, h := range row.Values {
+				g = append(g, Td(Text(h)))
+			}
+			
 			return Tr(
 				Class("cursor-pointer hover:bg-blue-50 transition-colors"),
 				Attr("hx-get", r.Path(routenames.AdminEntityView(entityTypeName), row.ID)),
@@ -219,13 +267,23 @@ func AdminEntityList(
 		return g
 	}
 
-	// Search form for User entity
+	// Search form for User and Note entities
 	searchForm := func() Node {
-		if entityTypeName != "User" {
+		if entityTypeName != "User" && entityTypeName != "Note" {
 			return Group{}
 		}
 
 		searchValue := ctx.QueryParam("search")
+		var placeholder string
+		var targetContainer string
+		
+		if entityTypeName == "User" {
+			placeholder = "Search users by name, phone number, or email..."
+			targetContainer = "#user-table-container"
+		} else {
+			placeholder = "Search notes by title, content, or creator name..."
+			targetContainer = "#note-table-container"
+		}
 
 		return Div(
 			Class("mb-6"),
@@ -236,12 +294,12 @@ func AdminEntityList(
 					Input(
 						Type("text"),
 						Name("search"),
-						Placeholder("Search users by name, phone number, or email..."),
+						Placeholder(placeholder),
 						Value(searchValue),
 						Class("input input-bordered w-full"),
 						Attr("hx-get", r.Path(routenames.AdminEntityList(entityTypeName))),
-						Attr("hx-trigger", "input changed delay:300ms, search"),
-						Attr("hx-target", "#user-table-container"),
+						Attr("hx-trigger", "input, search"),
+						Attr("hx-target", targetContainer),
 						Attr("hx-include", "this"),
 						Attr("hx-indicator", "#search-indicator"),
 					),
@@ -264,8 +322,8 @@ func AdminEntityList(
 
 	content := Group{
 		searchForm(),
-		// Only show Add button for non-User entities
-		If(entityTypeName != "User",
+		// Only show Add button for entities that allow creation (exclude User and Note)
+		If(entityTypeName != "User" && entityTypeName != "Note",
 			Div(
 				Class("form-control mb-2"),
 				ButtonLink(
@@ -276,7 +334,7 @@ func AdminEntityList(
 			),
 		),
 		Div(
-			ID("user-table-container"),
+			ID(fmt.Sprintf("%s-table-container", strings.ToLower(entityTypeName))),
 			Class("w-full"),
 			Table(
 				Class("table table-zebra mb-2 w-full"),
@@ -470,13 +528,13 @@ func AdminUserView(ctx echo.Context, entity map[string][]string, id int) error {
 						H3(Class("text-sm font-medium text-gray-700 mb-2 w-full"), Text("Communication")),
 						Button(
 							Class("inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"),
-							Attr("onclick", fmt.Sprintf("window.open('mailto:%s', '_blank')", getValue("Email"))),
+							Attr("onclick", fmt.Sprintf("window.open('mailto:%s', '_blank')", getValue("email"))),
 							Text("📧 Send Email"),
 						),
-						If(getValue("Phone") != "-",
+						If(getValue("phone_number") != "-",
 							Button(
 								Class("inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"),
-								Attr("onclick", fmt.Sprintf("window.open('sms:%s', '_blank')", getValue("Phone"))),
+								Attr("onclick", fmt.Sprintf("window.open('sms:%s', '_blank')", getValue("phone_number"))),
 								Text("📱 Send SMS"),
 							),
 						),
@@ -499,26 +557,51 @@ func AdminUserView(ctx echo.Context, entity map[string][]string, id int) error {
 }
 
 func AdminEntityListTable(
-	ctx echo.Context,
-	entityTypeName string,
-	entityList *admin.EntityList,
-) error {
-	r := ui.NewRequest(ctx)
+		ctx echo.Context,
+		entityTypeName string,
+		entityList *EntityList,
+	) error {
+		r := ui.NewRequest(ctx)
 
-	genHeader := func() Node {
-		g := make(Group, 0, len(entityList.Columns)+1)
-		g = append(g, Th(Class("sticky left-0 bg-white z-10"), Text("ID")))
+		// Check if this is a search request to show more columns
+		isSearch := ctx.QueryParam("search") != ""
+		
+		// Define responsive classes for User entity based on search state
+		var phoneClasses, emailClasses, verifiedClasses, activeClasses, createdClasses string
+		if entityTypeName == "User" {
+			if isSearch {
+				phoneClasses = "hidden md:table-cell"      // Show on medium+ screens during search
+				emailClasses = "hidden sm:table-cell"      // Show on small+ screens during search
+				verifiedClasses = "hidden lg:table-cell"   // Show on large+ screens during search
+				activeClasses = "hidden xl:table-cell"     // Show on xl+ screens during search
+				createdClasses = "hidden xl:table-cell"    // Show on xl+ screens during search
+			} else {
+				phoneClasses = "hidden"                   // Always hidden normally
+				emailClasses = "hidden xl:table-cell"      // Hidden except on extra large screens normally
+				verifiedClasses = "hidden 2xl:table-cell"  // Hidden except on 2xl screens normally
+				activeClasses = "hidden 2xl:table-cell"    // Hidden except on 2xl screens normally
+				createdClasses = "hidden 2xl:table-cell"   // Hidden except on 2xl screens normally
+			}
+		}
+
+		genHeader := func() Node {
+			g := make(Group, 0, len(entityList.Columns)+1)
+			
+			// Only add ID column for entities other than Note
+			if entityTypeName != "Note" {
+				g = append(g, Th(Class("sticky left-0 bg-white z-10"), Text("ID")))
+			}
 
 		if entityTypeName == "User" {
-			// For User entity, show minimal columns to prevent horizontal scrolling
+			
 			responsiveColumns := []struct {
 				name    string
 				classes string
 			}{
 				{"Name", ""},                            // Always visible
-				{"Phone number", "hidden"},              // Always hidden
-				{"Email", "hidden xl:table-cell"},       // Hidden except on extra large screens
-				{"Verified", "hidden 2xl:table-cell"},   // Hidden except on 2xl screens
+				{"Phone number", phoneClasses},
+				{"Email", emailClasses},
+				{"Verified", verifiedClasses},
 				{"Verification code", "hidden"},         // Always hidden
 				{"Admin", ""},                           // Always visible
 				{"Registration method", "hidden"},       // Always hidden
@@ -527,9 +610,9 @@ func AdminEntityListTable(
 				{"Bio", "hidden"},                       // Always hidden
 				{"Email notifications", "hidden"},       // Always hidden
 				{"Sms notifications", "hidden"},         // Always hidden
-				{"Is active", "hidden 2xl:table-cell"},  // Hidden except on 2xl screens
+				{"Is active", activeClasses},
 				{"Last login", "hidden"},                // Always hidden
-				{"Created at", "hidden 2xl:table-cell"}, // Hidden except on 2xl screens
+				{"Created at", createdClasses},
 				{"Updated at", "hidden"},                // Always hidden
 			}
 
@@ -546,18 +629,18 @@ func AdminEntityListTable(
 		return g
 	}
 
-	genRow := func(row admin.EntityValues) Node {
+	genRow := func(row EntityValues) Node {
 		if entityTypeName == "User" {
 			// For User entity, make entire row clickable with responsive column visibility
 			g := make(Group, 0, len(row.Values)+1)
 			g = append(g, Th(Class("sticky left-0 bg-white z-10"), Text(fmt.Sprint(row.ID))))
 
-			// Apply responsive classes to match header - minimal columns only
+			// Apply responsive classes to match header
 			responsiveClasses := []string{
 				"",                      // Name - Always visible
-				"hidden",                // Phone number - Always hidden
-				"hidden xl:table-cell",  // Email - Hidden except on extra large screens
-				"hidden 2xl:table-cell", // Verified - Hidden except on 2xl screens
+				phoneClasses,            // Phone number
+				emailClasses,            // Email
+				verifiedClasses,         // Verified
 				"hidden",                // Verification code - Always hidden
 				"",                      // Admin - Always visible
 				"hidden",                // Registration method - Always hidden
@@ -566,9 +649,9 @@ func AdminEntityListTable(
 				"hidden",                // Bio - Always hidden
 				"hidden",                // Email notifications - Always hidden
 				"hidden",                // Sms notifications - Always hidden
-				"hidden 2xl:table-cell", // Is active - Hidden except on 2xl screens
+				activeClasses,           // Is active
 				"hidden",                // Last login - Always hidden
-				"hidden 2xl:table-cell", // Created at - Hidden except on 2xl screens
+				createdClasses,          // Created at
 				"hidden",                // Updated at - Always hidden
 			}
 
@@ -580,6 +663,22 @@ func AdminEntityListTable(
 				}
 			}
 
+			return Tr(
+				Class("cursor-pointer hover:bg-blue-50 transition-colors"),
+				Attr("hx-get", r.Path(routenames.AdminEntityView(entityTypeName), row.ID)),
+				Attr("hx-push-url", "true"),
+				Attr("hx-target", "#main-content"),
+				g,
+			)
+		} else if entityTypeName == "Note" {
+			// For Note entity, make entire row clickable without ID column
+			g := make(Group, 0, len(row.Values))
+			
+			// Skip adding ID column for Notes
+			for _, h := range row.Values {
+				g = append(g, Td(Text(h)))
+			}
+			
 			return Tr(
 				Class("cursor-pointer hover:bg-blue-50 transition-colors"),
 				Attr("hx-get", r.Path(routenames.AdminEntityView(entityTypeName), row.ID)),

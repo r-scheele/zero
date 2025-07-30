@@ -9,6 +9,42 @@ import (
 	"github.com/r-scheele/zero/ent"
 )
 
+// The NoteFunc type is an adapter to allow the use of ordinary
+// function as Note mutator.
+type NoteFunc func(context.Context, *ent.NoteMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f NoteFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.NoteMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.NoteMutation", m)
+}
+
+// The NoteLikeFunc type is an adapter to allow the use of ordinary
+// function as NoteLike mutator.
+type NoteLikeFunc func(context.Context, *ent.NoteLikeMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f NoteLikeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.NoteLikeMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.NoteLikeMutation", m)
+}
+
+// The NoteRepostFunc type is an adapter to allow the use of ordinary
+// function as NoteRepost mutator.
+type NoteRepostFunc func(context.Context, *ent.NoteRepostMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f NoteRepostFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.NoteRepostMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.NoteRepostMutation", m)
+}
+
 // The PasswordTokenFunc type is an adapter to allow the use of ordinary
 // function as PasswordToken mutator.
 type PasswordTokenFunc func(context.Context, *ent.PasswordTokenMutation) (ent.Value, error)

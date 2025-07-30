@@ -1,15 +1,9 @@
 package schema
 
 import (
-	"context"
 	"fmt"
 	"regexp"
-	"strings"
 	"time"
-
-	ge "github.com/r-scheele/zero/ent"
-	"github.com/r-scheele/zero/ent/hook"
-	"golang.org/x/crypto/bcrypt"
 
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
@@ -113,38 +107,8 @@ func (User) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("owner", PasswordToken.Type).
 			Ref("user"),
-	}
-}
-
-// Hooks of the User.
-func (User) Hooks() []ent.Hook {
-	return []ent.Hook{
-		hook.On(
-			func(next ent.Mutator) ent.Mutator {
-				return hook.UserFunc(func(ctx context.Context, m *ge.UserMutation) (ent.Value, error) {
-					// Normalize phone number format
-					if v, exists := m.PhoneNumber(); exists {
-						// Ensure phone number starts with + and contains only digits
-						normalized := strings.TrimSpace(v)
-						if !strings.HasPrefix(normalized, "+") {
-							normalized = "+" + normalized
-						}
-						m.SetPhoneNumber(normalized)
-					}
-
-					// Hash password if it exists and isn't empty (optional for WhatsApp-only users)
-					if v, exists := m.Password(); exists && v != "" {
-						hash, err := bcrypt.GenerateFromPassword([]byte(v), bcrypt.DefaultCost)
-						if err != nil {
-							return "", err
-						}
-						m.SetPassword(string(hash))
-					}
-					return next.Mutate(ctx, m)
-				})
-			},
-			// Limit the hook only for these operations.
-			ent.OpCreate|ent.OpUpdate|ent.OpUpdateOne,
-		),
+		edge.To("notes", Note.Type),
+		edge.To("note_likes", NoteLike.Type),
+		edge.To("note_reposts", NoteRepost.Type),
 	}
 }

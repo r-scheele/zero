@@ -8,6 +8,117 @@ import (
 )
 
 var (
+	// NotesColumns holds the columns for the "notes" table.
+	NotesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "title", Type: field.TypeString},
+		{Name: "description", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "content", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "resources", Type: field.TypeJSON, Nullable: true},
+		{Name: "ai_curriculum", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "visibility", Type: field.TypeEnum, Enums: []string{"private", "public"}, Default: "private"},
+		{Name: "permission_level", Type: field.TypeEnum, Enums: []string{"read_only", "read_write", "read_write_approval"}, Default: "read_only"},
+		{Name: "share_token", Type: field.TypeString, Unique: true, Nullable: true},
+		{Name: "ai_processing", Type: field.TypeBool, Default: false},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "user_notes", Type: field.TypeInt},
+	}
+	// NotesTable holds the schema information for the "notes" table.
+	NotesTable = &schema.Table{
+		Name:       "notes",
+		Columns:    NotesColumns,
+		PrimaryKey: []*schema.Column{NotesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "notes_users_notes",
+				Columns:    []*schema.Column{NotesColumns[12]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "note_visibility_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{NotesColumns[6], NotesColumns[10]},
+			},
+			{
+				Name:    "note_share_token",
+				Unique:  true,
+				Columns: []*schema.Column{NotesColumns[8]},
+			},
+		},
+	}
+	// NoteLikesColumns holds the columns for the "note_likes" table.
+	NoteLikesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "note_likes", Type: field.TypeInt},
+		{Name: "user_note_likes", Type: field.TypeInt},
+	}
+	// NoteLikesTable holds the schema information for the "note_likes" table.
+	NoteLikesTable = &schema.Table{
+		Name:       "note_likes",
+		Columns:    NoteLikesColumns,
+		PrimaryKey: []*schema.Column{NoteLikesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "note_likes_notes_likes",
+				Columns:    []*schema.Column{NoteLikesColumns[2]},
+				RefColumns: []*schema.Column{NotesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "note_likes_users_note_likes",
+				Columns:    []*schema.Column{NoteLikesColumns[3]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "notelike_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{NoteLikesColumns[1]},
+			},
+		},
+	}
+	// NoteRepostsColumns holds the columns for the "note_reposts" table.
+	NoteRepostsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "comment", Type: field.TypeString, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "note_reposts", Type: field.TypeInt},
+		{Name: "user_note_reposts", Type: field.TypeInt},
+	}
+	// NoteRepostsTable holds the schema information for the "note_reposts" table.
+	NoteRepostsTable = &schema.Table{
+		Name:       "note_reposts",
+		Columns:    NoteRepostsColumns,
+		PrimaryKey: []*schema.Column{NoteRepostsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "note_reposts_notes_reposts",
+				Columns:    []*schema.Column{NoteRepostsColumns[3]},
+				RefColumns: []*schema.Column{NotesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "note_reposts_users_note_reposts",
+				Columns:    []*schema.Column{NoteRepostsColumns[4]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "noterepost_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{NoteRepostsColumns[2]},
+			},
+		},
+	}
 	// PasswordTokensColumns holds the columns for the "password_tokens" table.
 	PasswordTokensColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -58,11 +169,19 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		NotesTable,
+		NoteLikesTable,
+		NoteRepostsTable,
 		PasswordTokensTable,
 		UsersTable,
 	}
 )
 
 func init() {
+	NotesTable.ForeignKeys[0].RefTable = UsersTable
+	NoteLikesTable.ForeignKeys[0].RefTable = NotesTable
+	NoteLikesTable.ForeignKeys[1].RefTable = UsersTable
+	NoteRepostsTable.ForeignKeys[0].RefTable = NotesTable
+	NoteRepostsTable.ForeignKeys[1].RefTable = UsersTable
 	PasswordTokensTable.ForeignKeys[0].RefTable = UsersTable
 }

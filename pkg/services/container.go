@@ -64,6 +64,12 @@ type Container struct {
 	Tasks *backlite.Client
 
 	API *APIService
+
+	// Notes stores the notes service.
+	Notes *NotesService
+
+	// Storage stores the cloud storage service.
+	Storage StorageService
 }
 
 // NewContainer creates and initializes a new Container.
@@ -79,7 +85,9 @@ func NewContainer() *Container {
 	c.initAuth()
 	c.initMail()
 	c.initTasks()
+	c.initStorage()
 	c.initAPI()
+	c.initNotes()
 	return c
 }
 
@@ -209,7 +217,7 @@ func (c *Container) initORM() {
 
 // initAuth initializes the authentication client.
 func (c *Container) initAuth() {
-	c.Auth = NewAuthClient(c.Config, c.ORM)
+	c.Auth = NewAuthClient(c.Config, c.ORM, c.Cache)
 }
 
 // initMail initialize the mail client.
@@ -243,6 +251,49 @@ func (c *Container) initTasks() {
 	}
 }
 
+// initStorage initializes the storage service.
+func (c *Container) initStorage() {
+	// Check for cloud storage configuration from config
+	
+	// For S3:
+	if c.Config.Storage.AWS.Enabled && c.Config.Storage.AWS.Bucket != "" {
+		storage, err := NewS3StorageService(c.Config.Storage.AWS.Bucket, c.Config.Storage.AWS.Region)
+		if err != nil {
+			panic(fmt.Sprintf("failed to create S3 storage: %v", err))
+		}
+		c.Storage = storage
+		return
+	}
+	
+	// For GCS:
+	if c.Config.Storage.GCS.Enabled && c.Config.Storage.GCS.Bucket != "" {
+		storage, err := NewGCSStorageService(c.Config.Storage.GCS.Bucket, c.Config.Storage.GCS.ProjectID)
+		if err != nil {
+			panic(fmt.Sprintf("failed to create GCS storage: %v", err))
+		}
+		c.Storage = storage
+		return
+	}
+	
+	// For Azure:
+	if c.Config.Storage.Azure.Enabled && c.Config.Storage.Azure.Account != "" {
+		storage, err := NewAzureBlobStorageService(c.Config.Storage.Azure.Account, c.Config.Storage.Azure.Key, c.Config.Storage.Azure.Container)
+		if err != nil {
+			panic(fmt.Sprintf("failed to create Azure storage: %v", err))
+		}
+		c.Storage = storage
+		return
+	}
+	
+	// Default to local storage if no cloud storage is configured
+	if c.Config.Storage.Local.Enabled {
+		c.Storage = NewLocalStorageService(c.Config.Storage.Local.BaseURL)
+	} else {
+		// Fallback to app host if local storage config is not set
+		c.Storage = NewLocalStorageService(c.Config.App.Host)
+	}
+}
+
 // openDB opens a database connection.
 func openDB(driver, connection string) (*sql.DB, error) {
 	if driver == "sqlite3" {
@@ -267,4 +318,9 @@ func openDB(driver, connection string) (*sql.DB, error) {
 func (c *Container) initAPI() {
 	// Initialize API service
 	c.API = NewAPIService(c.ORM, c.Auth, c.Mail, c.Files, c.Config)
+}
+
+// initNotes initializes the notes service.
+func (c *Container) initNotes() {
+	c.Notes = NewNotesService(c.ORM, c.Files, c.Cache, c.Config)
 }

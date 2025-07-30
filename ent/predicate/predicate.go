@@ -6,6 +6,15 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
+// Note is the predicate function for note builders.
+type Note func(*sql.Selector)
+
+// NoteLike is the predicate function for notelike builders.
+type NoteLike func(*sql.Selector)
+
+// NoteRepost is the predicate function for noterepost builders.
+type NoteRepost func(*sql.Selector)
+
 // PasswordToken is the predicate function for passwordtoken builders.
 type PasswordToken func(*sql.Selector)
 

@@ -320,9 +320,16 @@ func (h *Profile) ChangePasswordSubmit(ctx echo.Context) error {
 		return h.ChangePasswordPage(ctx)
 	}
 
-	// Update password in database (User schema hook will handle hashing)
+	// Hash the new password before storing
+	hashedPassword, err := h.container.Auth.HashPassword(input.NewPassword)
+	if err != nil {
+		msg.Error(ctx, "Failed to update password. Please try again.")
+		return h.ChangePasswordPage(ctx)
+	}
+
+	// Update password in database
 	_, err = h.orm.User.UpdateOneID(u.ID).
-		SetPassword(input.NewPassword).
+		SetPassword(hashedPassword).
 		Save(ctx.Request().Context())
 	if err != nil {
 		msg.Error(ctx, "Failed to update password. Please try again.")

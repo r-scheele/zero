@@ -50,37 +50,74 @@ func (e InvalidPasswordTokenError) Error() string {
 type AuthClient struct {
 	config *config.Config
 	orm    *ent.Client
+	cache  *CacheClient
 }
 
 // NewAuthClient creates a new authentication client
-func NewAuthClient(cfg *config.Config, orm *ent.Client) *AuthClient {
+func NewAuthClient(cfg *config.Config, orm *ent.Client, cache *CacheClient) *AuthClient {
 	return &AuthClient{
 		config: cfg,
 		orm:    orm,
+		cache:  cache,
 	}
 }
 
 // Login logs in a user of a given ID
 func (c *AuthClient) Login(ctx echo.Context, userID int) error {
+	// Clear any existing user cache before login
+	if existingUserID, _ := c.GetAuthenticatedUserID(ctx); existingUserID > 0 {
+		cacheKey := fmt.Sprintf("user:%d", existingUserID)
+		c.cache.Flush().Key(cacheKey).Execute(ctx.Request().Context())
+	}
+
 	sess, err := session.Get(ctx, authSessionName)
 	if err != nil {
 		return err
 	}
+
+	// Clear existing session values first
+	delete(sess.Values, authSessionKeyUserID)
+	delete(sess.Values, authSessionKeyAuthenticated)
+
+	// Set new session values
 	sess.Values[authSessionKeyUserID] = userID
 	sess.Values[authSessionKeyAuthenticated] = true
+
+	// Clear cache for the new user to ensure fresh data
+	cacheKey := fmt.Sprintf("user:%d", userID)
+	c.cache.Flush().Key(cacheKey).Execute(ctx.Request().Context())
+
 	return sess.Save(ctx.Request(), ctx.Response())
 }
 
 // Logout logs the requesting user out
 func (c *AuthClient) Logout(ctx echo.Context) error {
+	// Get the user ID before clearing the session to clear cache
+	userID, _ := c.GetAuthenticatedUserID(ctx)
+
 	sess, err := session.Get(ctx, authSessionName)
 	if err != nil {
 		return err
 	}
+
 	// Clear all session data for complete logout
 	sess.Values = make(map[interface{}]interface{})
-	sess.Options.MaxAge = -1 // This will delete the session cookie
-	return sess.Save(ctx.Request(), ctx.Response())
+
+	// Set MaxAge to -1 to delete the session cookie
+	sess.Options.MaxAge = -1
+
+	// Save session first for fast logout response
+	err = sess.Save(ctx.Request(), ctx.Response())
+
+	// Clear user cache asynchronously to avoid blocking the response
+	if userID > 0 {
+		go func() {
+			cacheKey := fmt.Sprintf("user:%d", userID)
+			c.cache.Flush().Key(cacheKey).Execute(ctx.Request().Context())
+		}()
+	}
+
+	return err
 }
 
 // GetAuthenticatedUserID returns the authenticated user's ID, if the user is logged in
@@ -99,18 +136,49 @@ func (c *AuthClient) GetAuthenticatedUserID(ctx echo.Context) (int, error) {
 
 // GetAuthenticatedUser returns the authenticated user if the user is logged in
 func (c *AuthClient) GetAuthenticatedUser(ctx echo.Context) (*ent.User, error) {
-	if userID, err := c.GetAuthenticatedUserID(ctx); err == nil {
-		return c.orm.User.Query().
-			Where(user.ID(userID)).
-			Only(ctx.Request().Context())
+	userID, err := c.GetAuthenticatedUserID(ctx)
+	if err != nil {
+		return nil, NotAuthenticatedError{}
 	}
 
-	return nil, NotAuthenticatedError{}
+	// Try to get user from cache first
+	cacheKey := fmt.Sprintf("user:%d", userID)
+	if cachedUser, err := c.cache.Get().Key(cacheKey).Fetch(ctx.Request().Context()); err == nil {
+		if user, ok := cachedUser.(*ent.User); ok {
+			return user, nil
+		}
+	}
+
+	// If not in cache, fetch from database
+	user, err := c.orm.User.Query().
+		Where(user.ID(userID)).
+		Only(ctx.Request().Context())
+	if err != nil {
+		return nil, err
+	}
+
+	// Cache the user for future requests
+	c.cache.Set().
+		Key(cacheKey).
+		Data(user).
+		Expiration(c.config.Cache.Expiration.UserSession).
+		Save(ctx.Request().Context())
+
+	return user, nil
 }
 
 // CheckPassword check if a given password matches a given hash
 func (c *AuthClient) CheckPassword(password, hash string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+}
+
+// HashPassword hashes a plain text password using bcrypt
+func (c *AuthClient) HashPassword(password string) (string, error) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hashedPassword), nil
 }
 
 // GeneratePasswordResetToken generates a password reset token for a given user.
@@ -124,10 +192,16 @@ func (c *AuthClient) GeneratePasswordResetToken(ctx echo.Context, userID int) (s
 		return "", nil, err
 	}
 
+	// Hash the token before storing it in the database
+	hashedToken, err := bcrypt.GenerateFromPassword([]byte(token), bcrypt.DefaultCost)
+	if err != nil {
+		return "", nil, err
+	}
+
 	// Create and save the password reset token
 	pt, err := c.orm.PasswordToken.
 		Create().
-		SetToken(token).
+		SetToken(string(hashedToken)).
 		SetUserID(userID).
 		Save(ctx.Request().Context())
 

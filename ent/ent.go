@@ -12,6 +12,9 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/r-scheele/zero/ent/note"
+	"github.com/r-scheele/zero/ent/notelike"
+	"github.com/r-scheele/zero/ent/noterepost"
 	"github.com/r-scheele/zero/ent/passwordtoken"
 	"github.com/r-scheele/zero/ent/user"
 )
@@ -74,6 +77,9 @@ var (
 func checkColumn(table, column string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
+			note.Table:          note.ValidColumn,
+			notelike.Table:      notelike.ValidColumn,
+			noterepost.Table:    noterepost.ValidColumn,
 			passwordtoken.Table: passwordtoken.ValidColumn,
 			user.Table:          user.ValidColumn,
 		})

@@ -160,6 +160,11 @@ func authenticatedHomePage(r *ui.Request, posts *models.Posts) error {
 		return redirect.New(r.Context).URL("/admin").Go()
 	}
 
+	// If user is not verified, show unverified user home page
+	if r.AuthUser != nil && !r.AuthUser.Verified {
+		return unverifiedUserHomePage(r)
+	}
+
 	content := Div(
 		Class("max-w-4xl mx-auto space-y-6"),
 		
@@ -198,7 +203,7 @@ func authenticatedHomePage(r *ui.Request, posts *models.Posts) error {
 					// Only show action buttons for verified users
 					If(r.AuthUser != nil && r.AuthUser.Verified, Group{
 						A(
-							Href("/summaries/create"),
+							Href("/notes/create"),
 							Class("flex items-center gap-2 px-3 py-2 rounded-lg text-gray-600 hover:text-amber-700 hover:bg-amber-50 transition-all duration-200"),
 							Span(Class("text-lg"), Text("📝")),
 							Span(Class("font-medium"), Text("Note")),
@@ -589,7 +594,7 @@ func authenticatedDashboard(r *ui.Request, posts *models.Posts) error {
 					Class("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"),
 					// Create Note Card
 					A(
-						Href("/summaries/create"),
+						Href("/notes/create"),
 						Class("block bg-white p-6 rounded-lg border-l-4 border-l-amber-400 border-t border-r border-b border-gray-200 hover:border-amber-300 hover:shadow-lg hover:shadow-amber-500/20 transition-all duration-200"),
 						Div(
 							Class("flex items-center gap-4"),
@@ -705,4 +710,184 @@ func authenticatedDashboard(r *ui.Request, posts *models.Posts) error {
 	}
 
 	return r.Render(layouts.Primary, g)
+}
+
+// Home page for unverified users with limited content
+func unverifiedUserHomePage(r *ui.Request) error {
+	content := Div(
+		Class("max-w-4xl mx-auto space-y-6"),
+		
+		// Simple welcome message for unverified users
+		Div(
+			Class("bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg p-6 text-center"),
+			Div(
+				Class("w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4"),
+				Span(Class("text-2xl"), Text("📱")),
+			),
+			H2(
+				Class("text-xl font-semibold text-amber-800 mb-2"),
+				Text("Welcome to Zero!"),
+			),
+			P(
+				Class("text-amber-700"),
+				Text("Please verify your WhatsApp number to access all features and content."),
+			),
+		),
+		
+		// Read-only social media feed preview
+		// Note Post
+		Div(
+			Class("bg-white rounded-lg shadow-sm border-l-4 border-l-amber-400 border-t border-r border-b border-gray-200 opacity-75"),
+			// Post Header
+			Div(
+				Class("flex items-center gap-3 p-4 border-b border-gray-100"),
+				Div(
+					Class("w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center"),
+					Span(Class("text-amber-700 font-semibold"), Text("S")),
+				),
+				Div(
+					Class("flex-1"),
+					H3(Class("font-semibold text-gray-900"), Text("Sarah Chen")),
+					P(Class("text-sm text-gray-500 flex items-center gap-1"), 
+						Text("2 hours ago • "),
+						Span(Class("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800"), 
+							Text("📝 Note"),
+						),
+					),
+				),
+			),
+			// Post Content
+			Div(
+				Class("p-4"),
+				H4(Class("font-semibold text-gray-900 mb-2"), Text("Advanced Calculus - Integration Techniques")),
+				P(Class("text-gray-700 mb-3"), Text("Just finished my notes on integration by parts and substitution methods. The key insight is recognizing patterns in the integrand...")),
+				Div(
+					Class("bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg p-3"),
+					P(Class("text-sm text-amber-800 font-medium"), Text("💡 Pro tip: Always look for the derivative of one part in the other when using integration by parts!")),
+				),
+			),
+
+		),
+
+		// Quiz Post
+		Div(
+			Class("bg-white rounded-lg shadow-sm border-l-4 border-l-blue-400 border-t border-r border-b border-gray-200 opacity-75"),
+			// Post Header
+			Div(
+				Class("flex items-center gap-3 p-4 border-b border-gray-100"),
+				Div(
+					Class("w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center"),
+					Span(Class("text-blue-700 font-semibold"), Text("M")),
+				),
+				Div(
+					Class("flex-1"),
+					H3(Class("font-semibold text-gray-900"), Text("Mike Rodriguez")),
+					P(Class("text-sm text-gray-500 flex items-center gap-1"), 
+						Text("4 hours ago • "),
+						Span(Class("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"), 
+							Text("🧠 Quiz"),
+						),
+					),
+				),
+			),
+			// Post Content
+			Div(
+				Class("p-4"),
+				H4(Class("font-semibold text-gray-900 mb-2"), Text("JavaScript Fundamentals Quiz")),
+				P(Class("text-gray-700 mb-3"), Text("Created a comprehensive quiz covering variables, functions, and async programming. Perfect for beginners!")),
+				Div(
+					Class("bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4"),
+					Div(
+						Class("flex items-center justify-between mb-2"),
+						Span(Class("text-blue-800 font-semibold"), Text("15 Questions")),
+						Span(Class("text-blue-600 text-sm font-medium"), Text("~20 min")),
+					),
+					P(Class("text-blue-700 text-sm font-medium"), Text("Topics: Variables, Functions, Promises, DOM Manipulation")),
+				),
+			),
+
+		),
+
+		// File Post
+		Div(
+			Class("bg-white rounded-lg shadow-sm border-l-4 border-l-emerald-400 border-t border-r border-b border-gray-200 opacity-75"),
+			// Post Header
+			Div(
+				Class("flex items-center gap-3 p-4 border-b border-gray-100"),
+				Div(
+					Class("w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center"),
+					Span(Class("text-emerald-700 font-semibold"), Text("A")),
+				),
+				Div(
+					Class("flex-1"),
+					H3(Class("font-semibold text-gray-900"), Text("Alex Johnson")),
+					P(Class("text-sm text-gray-500 flex items-center gap-1"), 
+						Text("6 hours ago • "),
+						Span(Class("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800"), 
+							Text("📄 File"),
+						),
+					),
+				),
+			),
+			// Post Content
+			Div(
+				Class("p-4"),
+				H4(Class("font-semibold text-gray-900 mb-2"), Text("Machine Learning Cheat Sheet")),
+				P(Class("text-gray-700 mb-3"), Text("Uploaded a comprehensive ML cheat sheet covering algorithms, evaluation metrics, and best practices. Great for quick reference!")),
+				Div(
+					Class("bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-lg p-4 flex items-center gap-3"),
+					Div(
+						Class("w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center"),
+						Span(Class("text-emerald-600 text-lg"), Text("📄")),
+					),
+					Div(
+						Class("flex-1"),
+						P(Class("font-semibold text-emerald-800"), Text("ML_CheatSheet_2024.pdf")),
+						P(Class("text-sm text-emerald-600 font-medium"), Text("2.4 MB • PDF Document")),
+					),
+					Div(
+						Class("bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-2 rounded-lg text-sm font-medium"),
+						Text("⚠️ Verify account to download files"),
+					),
+				),
+			),
+
+		),
+
+		// Study Group Post
+		Div(
+			Class("bg-white rounded-lg shadow-sm border border-gray-200 opacity-75"),
+			// Post Header
+			Div(
+				Class("flex items-center gap-3 p-4 border-b border-gray-100"),
+				Div(
+					Class("w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center"),
+					Span(Class("text-pink-600 font-semibold"), Text("E")),
+				),
+				Div(
+					Class("flex-1"),
+					H3(Class("font-semibold text-gray-900"), Text("Emma Wilson")),
+					P(Class("text-sm text-gray-500"), Text("1 day ago • 👥 Study Group")),
+				),
+			),
+			// Post Content
+			Div(
+				Class("p-4"),
+				H4(Class("font-semibold text-gray-900 mb-2"), Text("Data Structures Study Group - Week 3")),
+				P(Class("text-gray-700 mb-3"), Text("Great session today! We covered binary trees and graph algorithms. Thanks everyone for the engaging discussions! 🌟")),
+				Div(
+					Class("bg-pink-50 border border-pink-200 rounded-lg p-3"),
+					Div(
+						Class("flex items-center gap-2 mb-2"),
+						Span(Class("text-pink-600 font-medium"), Text("📅 Next Session:")),
+						Span(Class("text-pink-800"), Text("Friday 3PM - Library Room 204")),
+					),
+					P(Class("text-pink-700 text-sm"), Text("Topic: Dynamic Programming & Memoization")),
+				),
+			),
+
+		),
+	)
+
+	return r.Render(layouts.Primary, content)
 }

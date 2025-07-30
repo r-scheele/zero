@@ -127,95 +127,102 @@ func (h *Auth) LoginPage(ctx echo.Context) error {
 func (h *Auth) LoginSubmit(ctx echo.Context) error {
 	var input forms.Login
 
-	authFailed := func() error {
-		input.SetFieldError("PhoneNumber", "")
-		input.SetFieldError("Password", "")
-		msg.Error(ctx, "Invalid credentials. Please try again.")
-		return h.LoginPage(ctx)
-	}
-
+	// Handle form submission errors
 	err := form.Submit(ctx, &input)
-
-	switch err.(type) {
-	case nil:
-	case validator.ValidationErrors:
-		return h.LoginPage(ctx)
-	default:
-		return err
+	if err != nil {
+		switch err.(type) {
+		case validator.ValidationErrors:
+			return h.LoginPage(ctx)
+		default:
+			log.Ctx(ctx).Error("form submission error", "error", err)
+			msg.Error(ctx, "An error occurred. Please try again.")
+			return h.LoginPage(ctx)
+		}
 	}
 
-	// Attempt to load the user.
+	// Find user by phone number
 	u, err := h.orm.User.
 		Query().
 		Where(user.PhoneNumber(strings.TrimSpace(input.PhoneNumber))).
 		Only(ctx.Request().Context())
 
-	switch err.(type) {
-	case *ent.NotFoundError:
-		return authFailed()
-	case nil:
-	default:
-		return fail(err, "error querying user during login")
+	if err != nil {
+		log.Ctx(ctx).Warn("login attempt with invalid phone", "phone", input.PhoneNumber)
+		input.SetFieldError("PhoneNumber", "")
+		input.SetFieldError("Password", "")
+		msg.Error(ctx, "Invalid phone number or password.")
+		return h.LoginPage(ctx)
 	}
 
-	// Check if the password is correct.
+	// Verify password
 	err = h.auth.CheckPassword(input.Password, u.Password)
 	if err != nil {
-		return authFailed()
+		log.Ctx(ctx).Warn("login attempt with invalid password", "user_id", u.ID)
+		input.SetFieldError("PhoneNumber", "")
+		input.SetFieldError("Password", "")
+		msg.Error(ctx, "Invalid phone number or password.")
+		return h.LoginPage(ctx)
 	}
 
-	// Check if the user's phone number is verified
-	if !u.Verified {
-		// Log the user in temporarily so they can access the verification page
-		err = h.auth.Login(ctx, u.ID)
-		if err != nil {
-			return fail(err, "unable to log in unverified user")
-		}
+	// Log the user in
+	err = h.auth.Login(ctx, u.ID)
+	if err != nil {
+		log.Ctx(ctx).Error("failed to create session", "error", err, "user_id", u.ID)
+		msg.Error(ctx, "Login failed. Please try again.")
+		return h.LoginPage(ctx)
+	}
 
-		msg.Warning(ctx, "Your phone number is not yet verified. Please verify your phone to access all features.")
+	log.Ctx(ctx).Info("user logged in successfully", "user_id", u.ID, "name", u.Name)
+
+	// Check verification status after successful login
+	if !u.Verified {
+		msg.Warning(ctx, "Please verify your phone number to access all features.")
 		return redirect.New(ctx).Route(routenames.VerificationNotice).Go()
 	}
 
-	// Log the user in.
-	err = h.auth.Login(ctx, u.ID)
-	if err != nil {
-		return fail(err, "unable to log in user")
-	}
+	msg.Success(ctx, fmt.Sprintf("Welcome back, %s!", u.Name))
 
-	msg.Success(ctx, fmt.Sprintf("Welcome back, %s. You are now logged in.", u.Name))
-
-	// Redirect admin users to admin panel, regular users to home
+	// Redirect based on user role
 	if u.Admin {
-		return redirect.New(ctx).
-			Route("admin:overview").
-			Go()
+		return redirect.New(ctx).Route("admin:overview").Go()
 	}
 
-	return redirect.New(ctx).
-		Route(routenames.Home).
-		Go()
+	return ctx.Redirect(http.StatusFound, "/home")
 }
 
 func (h *Auth) Logout(ctx echo.Context) error {
-	// Always try to logout, even if there are errors - be resilient
-	h.auth.Logout(ctx)
+	// Get current user for logging
+	currentUser := ctx.Get(context.AuthenticatedUserKey)
 
-	// Clear the authenticated user from the current request context
-	ctx.Set(context.AuthenticatedUserKey, nil)
+	// Safety check: if current user is nil, redirect to home page for unauthenticated users
+	if currentUser == nil {
+		log.Ctx(ctx).Info("logout attempted with no authenticated user - redirecting to home")
+		return ctx.Redirect(http.StatusFound, "/")
+	}
 
-	// Add essential headers for security
+
+
+	// Clear session
+	if err := h.auth.Logout(ctx); err != nil {
+		log.Ctx(ctx).Error("logout failed", "error", err)
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	// Set security headers to prevent caching
 	ctx.Response().Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	ctx.Response().Header().Set("Pragma", "no-cache")
 	ctx.Response().Header().Set("Expires", "0")
 
-	// If this is an HTMX request, force a full page reload
+	// Log the logout
+	log.Ctx(ctx).Info("user logged out")
+
+	// Handle HTMX requests
 	if ctx.Request().Header.Get("HX-Request") == "true" {
 		ctx.Response().Header().Set("HX-Redirect", "/")
-		return nil
+		return ctx.NoContent(http.StatusOK)
 	}
 
-	// Use direct redirect for non-HTMX requests
-	return ctx.Redirect(302, "/")
+	return ctx.Redirect(http.StatusFound, "/")
 }
 
 func (h *Auth) RegisterPage(ctx echo.Context) error {
@@ -225,72 +232,82 @@ func (h *Auth) RegisterPage(ctx echo.Context) error {
 func (h *Auth) RegisterSubmit(ctx echo.Context) error {
 	var input forms.Register
 
+	// Handle form submission errors
 	err := form.Submit(ctx, &input)
-
-	switch err.(type) {
-	case nil:
-	case validator.ValidationErrors:
-		return h.RegisterPage(ctx)
-	default:
-		return err
+	if err != nil {
+		switch err.(type) {
+		case validator.ValidationErrors:
+			return h.RegisterPage(ctx)
+		default:
+			log.Ctx(ctx).Error("registration form submission error", "error", err)
+			msg.Error(ctx, "An error occurred. Please try again.")
+			return h.RegisterPage(ctx)
+		}
 	}
 
-	// Generate a 2-digit verification code for WhatsApp verification
+	// Clear any existing session before registration
+	if existingUser := ctx.Get(context.AuthenticatedUserKey); existingUser != nil {
+		h.auth.Logout(ctx)
+	}
+
+	// Generate verification code
 	verificationCode := generateTwoDigitCode()
 
-	// Attempt creating the user.
+	// Hash the password before storing
+	hashedPassword, err := h.auth.HashPassword(input.Password)
+	if err != nil {
+		log.Ctx(ctx).Error("failed to hash password", "error", err)
+		msg.Error(ctx, "Registration failed. Please try again.")
+		return h.RegisterPage(ctx)
+	}
+
+	// Create the user
 	u, err := h.orm.User.
 		Create().
-		SetName(input.Name).
-		SetPhoneNumber(input.PhoneNumber).
-		SetPassword(input.Password).
+		SetName(strings.TrimSpace(input.Name)).
+		SetPhoneNumber(strings.TrimSpace(input.PhoneNumber)).
+		SetPassword(hashedPassword).
 		SetRegistrationMethod("web").
 		SetVerificationCode(verificationCode).
 		Save(ctx.Request().Context())
 
-	switch err.(type) {
-	case nil:
-		log.Ctx(ctx).Info("user created",
-			"user_name", u.Name,
-			"user_id", u.ID,
-			"phone_number", u.PhoneNumber,
-		)
-	case *ent.ConstraintError:
-		msg.Warning(ctx, "A user with this phone number already exists. Please log in.")
-		return redirect.New(ctx).
-			Route(routenames.Login).
-			Go()
-	default:
-		return fail(err, "unable to create user")
+	if err != nil {
+		switch err.(type) {
+		case *ent.ConstraintError:
+			log.Ctx(ctx).Warn("registration attempt with existing phone", "phone", input.PhoneNumber)
+			input.SetFieldError("PhoneNumber", "This phone number is already registered")
+			msg.Warning(ctx, "A user with this phone number already exists. Please log in instead.")
+			return h.RegisterPage(ctx)
+		default:
+			log.Ctx(ctx).Error("failed to create user", "error", err)
+			msg.Error(ctx, "Registration failed. Please try again.")
+			return h.RegisterPage(ctx)
+		}
 	}
 
-	// Log the user in.
+	log.Ctx(ctx).Info("user registered successfully", "user_id", u.ID, "name", u.Name, "phone", u.PhoneNumber)
+
+	// Log the user in immediately after registration
 	err = h.auth.Login(ctx, u.ID)
 	if err != nil {
-		log.Ctx(ctx).Error("unable to log user in",
-			"error", err,
-			"user_id", u.ID,
-		)
-		msg.Info(ctx, "Your account has been created.")
-		return redirect.New(ctx).
-			Route(routenames.Login).
-			Go()
+		log.Ctx(ctx).Error("failed to login after registration", "error", err, "user_id", u.ID)
+		msg.Success(ctx, "Account created successfully! Please log in.")
+		return redirect.New(ctx).Route(routenames.Login).Go()
 	}
 
-	// Get the verification code for display
+	// Get verification code for display
 	displayCode := ""
 	if u.VerificationCode != nil {
 		displayCode = *u.VerificationCode
 	}
 
-	msg.Success(ctx, fmt.Sprintf("🎉 Account created! Your WhatsApp verification code is: %s. Check your WhatsApp and select the button with this code to complete verification.", displayCode))
+	msg.Success(ctx, fmt.Sprintf("🎉 Welcome, %s! Your account has been created. Verification code: %s", u.Name, displayCode))
 
-	// Send the phone verification.
+	// Send phone verification
 	h.sendPhoneVerification(ctx, u, "web")
 
-	return redirect.New(ctx).
-		Route(routenames.Home).
-		Go()
+	// Redirect to verification notice since user needs to verify
+	return redirect.New(ctx).Route(routenames.VerificationNotice).Go()
 }
 
 func (h *Auth) sendPhoneVerification(ctx echo.Context, usr *ent.User, method string) {
@@ -332,10 +349,18 @@ func (h *Auth) ResetPasswordSubmit(ctx echo.Context) error {
 	// Get the requesting user.
 	usr := ctx.Get(context.UserKey).(*ent.User)
 
+	// Hash the new password before storing
+	hashedPassword, err := h.auth.HashPassword(input.Password)
+	if err != nil {
+		log.Ctx(ctx).Error("failed to hash password", "error", err)
+		msg.Error(ctx, "Password reset failed. Please try again.")
+		return h.ResetPasswordPage(ctx)
+	}
+
 	// Update the user.
 	_, err = usr.
 		Update().
-		SetPassword(input.Password).
+		SetPassword(hashedPassword).
 		Save(ctx.Request().Context())
 
 	if err != nil {
@@ -357,9 +382,7 @@ func (h *Auth) ResetPasswordSubmit(ctx echo.Context) error {
 func (h *Auth) VerifyEmail(ctx echo.Context) error {
 	// TODO: Implement phone verification via WhatsApp confirmation
 	msg.Warning(ctx, "Phone verification is handled via WhatsApp. Please check your WhatsApp messages.")
-	return redirect.New(ctx).
-		Route(routenames.Home).
-		Go()
+	return ctx.Redirect(http.StatusFound, "/home")
 }
 
 func (h *Auth) VerificationNotice(ctx echo.Context) error {
@@ -371,7 +394,7 @@ func (h *Auth) ResendVerification(ctx echo.Context) error {
 		if user, ok := u.(*ent.User); ok {
 			if user.Verified {
 				msg.Info(ctx, "Your phone number is already verified.")
-				return redirect.New(ctx).Route(routenames.Home).Go()
+				return ctx.Redirect(http.StatusFound, "/home")
 			}
 
 			// Send phone verification

@@ -12,6 +12,12 @@ import (
 // Tx is a transactional client that is created by calling Client.Tx().
 type Tx struct {
 	config
+	// Note is the client for interacting with the Note builders.
+	Note *NoteClient
+	// NoteLike is the client for interacting with the NoteLike builders.
+	NoteLike *NoteLikeClient
+	// NoteRepost is the client for interacting with the NoteRepost builders.
+	NoteRepost *NoteRepostClient
 	// PasswordToken is the client for interacting with the PasswordToken builders.
 	PasswordToken *PasswordTokenClient
 	// User is the client for interacting with the User builders.
@@ -147,6 +153,9 @@ func (tx *Tx) Client() *Client {
 }
 
 func (tx *Tx) init() {
+	tx.Note = NewNoteClient(tx.config)
+	tx.NoteLike = NewNoteLikeClient(tx.config)
+	tx.NoteRepost = NewNoteRepostClient(tx.config)
 	tx.PasswordToken = NewPasswordTokenClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }
@@ -158,7 +167,7 @@ func (tx *Tx) init() {
 // of them in order to commit or rollback the transaction.
 //
 // If a closed transaction is embedded in one of the generated entities, and the entity
-// applies a query, for example: PasswordToken.QueryXXX(), the query will be executed
+// applies a query, for example: Note.QueryXXX(), the query will be executed
 // through the driver which created this transaction.
 //
 // Note that txDriver is not goroutine safe.

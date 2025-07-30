@@ -11,6 +11,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/r-scheele/zero/ent/note"
+	"github.com/r-scheele/zero/ent/notelike"
+	"github.com/r-scheele/zero/ent/noterepost"
 	"github.com/r-scheele/zero/ent/passwordtoken"
 	"github.com/r-scheele/zero/ent/predicate"
 	"github.com/r-scheele/zero/ent/user"
@@ -302,6 +305,51 @@ func (uu *UserUpdate) AddOwner(p ...*PasswordToken) *UserUpdate {
 	return uu.AddOwnerIDs(ids...)
 }
 
+// AddNoteIDs adds the "notes" edge to the Note entity by IDs.
+func (uu *UserUpdate) AddNoteIDs(ids ...int) *UserUpdate {
+	uu.mutation.AddNoteIDs(ids...)
+	return uu
+}
+
+// AddNotes adds the "notes" edges to the Note entity.
+func (uu *UserUpdate) AddNotes(n ...*Note) *UserUpdate {
+	ids := make([]int, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return uu.AddNoteIDs(ids...)
+}
+
+// AddNoteLikeIDs adds the "note_likes" edge to the NoteLike entity by IDs.
+func (uu *UserUpdate) AddNoteLikeIDs(ids ...int) *UserUpdate {
+	uu.mutation.AddNoteLikeIDs(ids...)
+	return uu
+}
+
+// AddNoteLikes adds the "note_likes" edges to the NoteLike entity.
+func (uu *UserUpdate) AddNoteLikes(n ...*NoteLike) *UserUpdate {
+	ids := make([]int, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return uu.AddNoteLikeIDs(ids...)
+}
+
+// AddNoteRepostIDs adds the "note_reposts" edge to the NoteRepost entity by IDs.
+func (uu *UserUpdate) AddNoteRepostIDs(ids ...int) *UserUpdate {
+	uu.mutation.AddNoteRepostIDs(ids...)
+	return uu
+}
+
+// AddNoteReposts adds the "note_reposts" edges to the NoteRepost entity.
+func (uu *UserUpdate) AddNoteReposts(n ...*NoteRepost) *UserUpdate {
+	ids := make([]int, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return uu.AddNoteRepostIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uu *UserUpdate) Mutation() *UserMutation {
 	return uu.mutation
@@ -328,11 +376,72 @@ func (uu *UserUpdate) RemoveOwner(p ...*PasswordToken) *UserUpdate {
 	return uu.RemoveOwnerIDs(ids...)
 }
 
+// ClearNotes clears all "notes" edges to the Note entity.
+func (uu *UserUpdate) ClearNotes() *UserUpdate {
+	uu.mutation.ClearNotes()
+	return uu
+}
+
+// RemoveNoteIDs removes the "notes" edge to Note entities by IDs.
+func (uu *UserUpdate) RemoveNoteIDs(ids ...int) *UserUpdate {
+	uu.mutation.RemoveNoteIDs(ids...)
+	return uu
+}
+
+// RemoveNotes removes "notes" edges to Note entities.
+func (uu *UserUpdate) RemoveNotes(n ...*Note) *UserUpdate {
+	ids := make([]int, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return uu.RemoveNoteIDs(ids...)
+}
+
+// ClearNoteLikes clears all "note_likes" edges to the NoteLike entity.
+func (uu *UserUpdate) ClearNoteLikes() *UserUpdate {
+	uu.mutation.ClearNoteLikes()
+	return uu
+}
+
+// RemoveNoteLikeIDs removes the "note_likes" edge to NoteLike entities by IDs.
+func (uu *UserUpdate) RemoveNoteLikeIDs(ids ...int) *UserUpdate {
+	uu.mutation.RemoveNoteLikeIDs(ids...)
+	return uu
+}
+
+// RemoveNoteLikes removes "note_likes" edges to NoteLike entities.
+func (uu *UserUpdate) RemoveNoteLikes(n ...*NoteLike) *UserUpdate {
+	ids := make([]int, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return uu.RemoveNoteLikeIDs(ids...)
+}
+
+// ClearNoteReposts clears all "note_reposts" edges to the NoteRepost entity.
+func (uu *UserUpdate) ClearNoteReposts() *UserUpdate {
+	uu.mutation.ClearNoteReposts()
+	return uu
+}
+
+// RemoveNoteRepostIDs removes the "note_reposts" edge to NoteRepost entities by IDs.
+func (uu *UserUpdate) RemoveNoteRepostIDs(ids ...int) *UserUpdate {
+	uu.mutation.RemoveNoteRepostIDs(ids...)
+	return uu
+}
+
+// RemoveNoteReposts removes "note_reposts" edges to NoteRepost entities.
+func (uu *UserUpdate) RemoveNoteReposts(n ...*NoteRepost) *UserUpdate {
+	ids := make([]int, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return uu.RemoveNoteRepostIDs(ids...)
+}
+
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (uu *UserUpdate) Save(ctx context.Context) (int, error) {
-	if err := uu.defaults(); err != nil {
-		return 0, err
-	}
+	uu.defaults()
 	return withHooks(ctx, uu.sqlSave, uu.mutation, uu.hooks)
 }
 
@@ -359,15 +468,11 @@ func (uu *UserUpdate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (uu *UserUpdate) defaults() error {
+func (uu *UserUpdate) defaults() {
 	if _, ok := uu.mutation.UpdatedAt(); !ok && !uu.mutation.UpdatedAtCleared() {
-		if user.UpdateDefaultUpdatedAt == nil {
-			return fmt.Errorf("ent: uninitialized user.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
-		}
 		v := user.UpdateDefaultUpdatedAt()
 		uu.mutation.SetUpdatedAt(v)
 	}
-	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -524,6 +629,141 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(passwordtoken.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if uu.mutation.NotesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NotesTable,
+			Columns: []string{user.NotesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(note.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.RemovedNotesIDs(); len(nodes) > 0 && !uu.mutation.NotesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NotesTable,
+			Columns: []string{user.NotesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(note.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.NotesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NotesTable,
+			Columns: []string{user.NotesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(note.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if uu.mutation.NoteLikesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteLikesTable,
+			Columns: []string{user.NoteLikesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelike.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.RemovedNoteLikesIDs(); len(nodes) > 0 && !uu.mutation.NoteLikesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteLikesTable,
+			Columns: []string{user.NoteLikesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelike.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.NoteLikesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteLikesTable,
+			Columns: []string{user.NoteLikesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelike.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if uu.mutation.NoteRepostsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteRepostsTable,
+			Columns: []string{user.NoteRepostsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noterepost.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.RemovedNoteRepostsIDs(); len(nodes) > 0 && !uu.mutation.NoteRepostsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteRepostsTable,
+			Columns: []string{user.NoteRepostsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noterepost.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.NoteRepostsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteRepostsTable,
+			Columns: []string{user.NoteRepostsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noterepost.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -824,6 +1064,51 @@ func (uuo *UserUpdateOne) AddOwner(p ...*PasswordToken) *UserUpdateOne {
 	return uuo.AddOwnerIDs(ids...)
 }
 
+// AddNoteIDs adds the "notes" edge to the Note entity by IDs.
+func (uuo *UserUpdateOne) AddNoteIDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.AddNoteIDs(ids...)
+	return uuo
+}
+
+// AddNotes adds the "notes" edges to the Note entity.
+func (uuo *UserUpdateOne) AddNotes(n ...*Note) *UserUpdateOne {
+	ids := make([]int, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return uuo.AddNoteIDs(ids...)
+}
+
+// AddNoteLikeIDs adds the "note_likes" edge to the NoteLike entity by IDs.
+func (uuo *UserUpdateOne) AddNoteLikeIDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.AddNoteLikeIDs(ids...)
+	return uuo
+}
+
+// AddNoteLikes adds the "note_likes" edges to the NoteLike entity.
+func (uuo *UserUpdateOne) AddNoteLikes(n ...*NoteLike) *UserUpdateOne {
+	ids := make([]int, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return uuo.AddNoteLikeIDs(ids...)
+}
+
+// AddNoteRepostIDs adds the "note_reposts" edge to the NoteRepost entity by IDs.
+func (uuo *UserUpdateOne) AddNoteRepostIDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.AddNoteRepostIDs(ids...)
+	return uuo
+}
+
+// AddNoteReposts adds the "note_reposts" edges to the NoteRepost entity.
+func (uuo *UserUpdateOne) AddNoteReposts(n ...*NoteRepost) *UserUpdateOne {
+	ids := make([]int, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return uuo.AddNoteRepostIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uuo *UserUpdateOne) Mutation() *UserMutation {
 	return uuo.mutation
@@ -850,6 +1135,69 @@ func (uuo *UserUpdateOne) RemoveOwner(p ...*PasswordToken) *UserUpdateOne {
 	return uuo.RemoveOwnerIDs(ids...)
 }
 
+// ClearNotes clears all "notes" edges to the Note entity.
+func (uuo *UserUpdateOne) ClearNotes() *UserUpdateOne {
+	uuo.mutation.ClearNotes()
+	return uuo
+}
+
+// RemoveNoteIDs removes the "notes" edge to Note entities by IDs.
+func (uuo *UserUpdateOne) RemoveNoteIDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.RemoveNoteIDs(ids...)
+	return uuo
+}
+
+// RemoveNotes removes "notes" edges to Note entities.
+func (uuo *UserUpdateOne) RemoveNotes(n ...*Note) *UserUpdateOne {
+	ids := make([]int, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return uuo.RemoveNoteIDs(ids...)
+}
+
+// ClearNoteLikes clears all "note_likes" edges to the NoteLike entity.
+func (uuo *UserUpdateOne) ClearNoteLikes() *UserUpdateOne {
+	uuo.mutation.ClearNoteLikes()
+	return uuo
+}
+
+// RemoveNoteLikeIDs removes the "note_likes" edge to NoteLike entities by IDs.
+func (uuo *UserUpdateOne) RemoveNoteLikeIDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.RemoveNoteLikeIDs(ids...)
+	return uuo
+}
+
+// RemoveNoteLikes removes "note_likes" edges to NoteLike entities.
+func (uuo *UserUpdateOne) RemoveNoteLikes(n ...*NoteLike) *UserUpdateOne {
+	ids := make([]int, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return uuo.RemoveNoteLikeIDs(ids...)
+}
+
+// ClearNoteReposts clears all "note_reposts" edges to the NoteRepost entity.
+func (uuo *UserUpdateOne) ClearNoteReposts() *UserUpdateOne {
+	uuo.mutation.ClearNoteReposts()
+	return uuo
+}
+
+// RemoveNoteRepostIDs removes the "note_reposts" edge to NoteRepost entities by IDs.
+func (uuo *UserUpdateOne) RemoveNoteRepostIDs(ids ...int) *UserUpdateOne {
+	uuo.mutation.RemoveNoteRepostIDs(ids...)
+	return uuo
+}
+
+// RemoveNoteReposts removes "note_reposts" edges to NoteRepost entities.
+func (uuo *UserUpdateOne) RemoveNoteReposts(n ...*NoteRepost) *UserUpdateOne {
+	ids := make([]int, len(n))
+	for i := range n {
+		ids[i] = n[i].ID
+	}
+	return uuo.RemoveNoteRepostIDs(ids...)
+}
+
 // Where appends a list predicates to the UserUpdate builder.
 func (uuo *UserUpdateOne) Where(ps ...predicate.User) *UserUpdateOne {
 	uuo.mutation.Where(ps...)
@@ -865,9 +1213,7 @@ func (uuo *UserUpdateOne) Select(field string, fields ...string) *UserUpdateOne 
 
 // Save executes the query and returns the updated User entity.
 func (uuo *UserUpdateOne) Save(ctx context.Context) (*User, error) {
-	if err := uuo.defaults(); err != nil {
-		return nil, err
-	}
+	uuo.defaults()
 	return withHooks(ctx, uuo.sqlSave, uuo.mutation, uuo.hooks)
 }
 
@@ -894,15 +1240,11 @@ func (uuo *UserUpdateOne) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (uuo *UserUpdateOne) defaults() error {
+func (uuo *UserUpdateOne) defaults() {
 	if _, ok := uuo.mutation.UpdatedAt(); !ok && !uuo.mutation.UpdatedAtCleared() {
-		if user.UpdateDefaultUpdatedAt == nil {
-			return fmt.Errorf("ent: uninitialized user.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
-		}
 		v := user.UpdateDefaultUpdatedAt()
 		uuo.mutation.SetUpdatedAt(v)
 	}
-	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -1076,6 +1418,141 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(passwordtoken.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if uuo.mutation.NotesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NotesTable,
+			Columns: []string{user.NotesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(note.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.RemovedNotesIDs(); len(nodes) > 0 && !uuo.mutation.NotesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NotesTable,
+			Columns: []string{user.NotesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(note.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.NotesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NotesTable,
+			Columns: []string{user.NotesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(note.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if uuo.mutation.NoteLikesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteLikesTable,
+			Columns: []string{user.NoteLikesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelike.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.RemovedNoteLikesIDs(); len(nodes) > 0 && !uuo.mutation.NoteLikesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteLikesTable,
+			Columns: []string{user.NoteLikesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelike.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.NoteLikesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteLikesTable,
+			Columns: []string{user.NoteLikesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(notelike.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if uuo.mutation.NoteRepostsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteRepostsTable,
+			Columns: []string{user.NoteRepostsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noterepost.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.RemovedNoteRepostsIDs(); len(nodes) > 0 && !uuo.mutation.NoteRepostsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteRepostsTable,
+			Columns: []string{user.NoteRepostsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noterepost.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.NoteRepostsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.NoteRepostsTable,
+			Columns: []string{user.NoteRepostsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(noterepost.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

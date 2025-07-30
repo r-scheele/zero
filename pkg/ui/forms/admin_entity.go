@@ -3,16 +3,28 @@ package forms
 import (
 	"net/http"
 	"net/url"
+	"strings"
 
 	"entgo.io/ent/entc/load"
 	"entgo.io/ent/schema/field"
-	"github.com/r-scheele/zero/ent/admin"
 	"github.com/r-scheele/zero/pkg/routenames"
 	"github.com/r-scheele/zero/pkg/ui"
 	. "github.com/r-scheele/zero/pkg/ui/components"
 	. "maragu.dev/gomponents"
 	. "maragu.dev/gomponents/html"
 )
+
+// fieldLabel converts a field name to a human-readable label
+func fieldLabel(name string) string {
+	// Convert snake_case to Title Case
+	parts := strings.Split(name, "_")
+	for i, part := range parts {
+		if len(part) > 0 {
+			parts[i] = strings.ToUpper(part[:1]) + part[1:]
+		}
+	}
+	return strings.Join(parts, " ")
+}
 
 func AdminEntity(r *ui.Request, schema *load.Schema, values url.Values) Node {
 	// TODO inline validation?
@@ -45,7 +57,7 @@ func AdminEntity(r *ui.Request, schema *load.Schema, values url.Values) Node {
 			p := InputFieldParams{
 				Name:      f.Name,
 				InputType: "text",
-				Label:     admin.FieldLabel(f.Name),
+				Label:     fieldLabel(f.Name),
 				Value:     getValue(f.Name),
 			}
 
@@ -62,7 +74,7 @@ func AdminEntity(r *ui.Request, schema *load.Schema, values url.Values) Node {
 			nodes = append(nodes, InputField(InputFieldParams{
 				Name:      f.Name,
 				InputType: "datetime-local",
-				Label:     admin.FieldLabel(f.Name),
+				Label:     fieldLabel(f.Name),
 				Value:     getValue(f.Name),
 			}))
 
@@ -72,14 +84,14 @@ func AdminEntity(r *ui.Request, schema *load.Schema, values url.Values) Node {
 			nodes = append(nodes, InputField(InputFieldParams{
 				Name:      f.Name,
 				InputType: "number",
-				Label:     admin.FieldLabel(f.Name),
+				Label:     fieldLabel(f.Name),
 				Value:     getValue(f.Name),
 			}))
 
 		case field.TypeBool:
 			nodes = append(nodes, Checkbox(CheckboxParams{
 				Name:    f.Name,
-				Label:   admin.FieldLabel(f.Name),
+				Label:   fieldLabel(f.Name),
 				Checked: getValue(f.Name) == "true",
 			}))
 
@@ -99,7 +111,7 @@ func AdminEntity(r *ui.Request, schema *load.Schema, values url.Values) Node {
 			}
 			nodes = append(nodes, SelectList(OptionsParams{
 				Name:    f.Name,
-				Label:   admin.FieldLabel(f.Name),
+				Label:   fieldLabel(f.Name),
 				Value:   getValue(f.Name),
 				Options: options,
 			}))

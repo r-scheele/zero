@@ -8,7 +8,6 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/r-scheele/zero/config"
@@ -81,10 +80,10 @@ type ReplyButton struct {
 
 
 func NewAPIService(orm *ent.Client, auth *AuthClient, mail *MailClient, files afero.Fs, config *config.Config) *APIService {
-	// Initialize WhatsApp API with environment variables
+	// Initialize WhatsApp API with configuration values
 	whatsappAPI := &WhatsAppAPI{
-		baseURL: "https://waba.360dialog.io/v1",
-		apiKey:  os.Getenv("WHATSAPP_API_KEY"),
+		baseURL: config.WhatsApp.BaseURL,
+		apiKey:  config.WhatsApp.AccessToken,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
