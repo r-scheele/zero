@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	err := entc.Generate("./schema",
+	err := entc.Generate("./ent/schema",
 		&gen.Config{},
 	)
 	if err != nil {
