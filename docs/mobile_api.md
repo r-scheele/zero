@@ -1,11 +1,17 @@
-# Zero API Documentation
+# Zero Mobile API Documentation
 
-This document describes the REST API endpoints available. All endpoints return JSON responses and use standard HTTP status codes.
+This document outlines the REST API endpoints available for mobile applications integrating with the Zero note-taking platform.
+
+## Implementation Status
+
+🟢 **Implemented**: Core authentication, note management, and social features  
+🟡 **Partial**: Some endpoints may have limited functionality  
+🔴 **Planned**: Advanced features not yet implemented  
 
 ## Base URL
 
 ```
-http://localhost:8000/api/v1
+https://your-domain.com/api/v1
 ```
 
 ## API Structure
@@ -122,7 +128,7 @@ OK
 
 ## Authentication Endpoints
 
-### Register
+### Register 🟢
 
 **POST** `/register`
 
@@ -148,7 +154,7 @@ Create a new user account.
 }
 ```
 
-### Login
+### Login 🟢
 
 **POST** `/login`
 
@@ -174,7 +180,7 @@ Authenticate a user and receive a JWT token.
 }
 ```
 
-### Logout
+### Logout 🟢
 
 **POST** `/logout`
 
@@ -189,7 +195,7 @@ Logout the current user (client-side token invalidation).
 }
 ```
 
-### Forgot Password
+### Forgot Password 🟢
 
 **POST** `/forgot-password`
 
@@ -209,7 +215,7 @@ Request a password reset via WhatsApp.
 }
 ```
 
-### Reset Password
+### Reset Password 🟢
 
 **POST** `/reset-password`
 
@@ -248,7 +254,7 @@ Resend phone verification message via WhatsApp.
 
 ## Profile Endpoints
 
-### Get Profile
+### Get Profile 🟢
 
 **GET** `/profile`
 
@@ -270,7 +276,7 @@ Retrieve the current user's profile information.
 }
 ```
 
-### Update Profile
+### Update Profile 🟢
 
 **PUT** `/profile`
 
@@ -363,6 +369,76 @@ Deactivate user account (permanent deletion).
 ```json
 {
   "message": "Account deactivated successfully"
+}
+```
+
+## Note Management Endpoints
+
+### Create Note 🟢
+
+**POST** `/notes`
+
+*Requires Authentication*
+
+Create a new note with title, description, content, and resources.
+
+**Request Body:**
+```json
+{
+  "title": "My Study Notes",
+  "description": "Notes about advanced mathematics",
+  "content": "Detailed content of the note...",
+  "visibility": "private",
+  "permission_level": "read_only",
+  "resources": [
+    {
+      "type": "url",
+      "url": "https://example.com/resource",
+      "title": "External Resource"
+    },
+    {
+      "type": "file",
+      "filename": "document.pdf",
+      "size": 1024000,
+      "url": "https://storage.example.com/files/document.pdf"
+    }
+  ]
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "success": true,
+  "data": {
+    "note": {
+      "id": 456,
+      "title": "My Study Notes",
+      "description": "Notes about advanced mathematics",
+      "content": "Detailed content of the note...",
+      "visibility": "private",
+      "permission_level": "read_only",
+      "share_token": "abc123def456",
+      "ai_processing": false,
+      "resources": [
+        {
+          "type": "url",
+          "url": "https://example.com/resource",
+          "title": "External Resource"
+        }
+      ],
+      "author": {
+        "id": 123,
+        "name": "John Doe"
+      },
+      "likes_count": 0,
+      "reposts_count": 0,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  "message": "Note created successfully",
+  "error": null
 }
 ```
 

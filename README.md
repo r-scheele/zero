@@ -16,39 +16,76 @@
 
 ## 🎓 What is Zero?
 
-Zero is a **comprehensive learning platform** designed for students and educators. It provides concrete, no-nonsense tools for learners in a hurry, covering everything from interactive quizzes and document management to progress tracking and collaborative study features. Built with modern web technologies, Zero makes learning accessible, efficient, and engaging.
+Zero is a **note-taking and content management platform** designed for students and educators. It provides concrete, no-nonsense tools for organizing study materials, creating notes, and managing content with modern web technologies.
 
-### ✨ Key Features
+## 📊 Database Schema
 
-- 📚 **Study Materials** - Organize and access your documents and learning resources
-- 🧠 **Smart Quizzes** - Test your knowledge effectively with interactive quizzes
-- 📊 **Progress Tracking** - Monitor your learning journey and achievements
-- 👥 **Collaboration** - Learn together with others in a shared environment
-- 🔐 **User Management** - Secure registration, login, and profile management
-- 📱 **Mobile-First Design** - Beautiful, responsive interface for all devices
-- 👑 **Admin Panel** - Comprehensive management tools for educators
-- 🗄️ **Document Management** - Upload, organize, and share study materials
-- 🔍 **Advanced Search** - Find content quickly with powerful search capabilities
-- 📧 **Notifications** - Stay updated with email and in-app notifications
-- 🎯 **Zero JavaScript Required** - Built with modern web technologies
-- 🔄 **Real-time Updates** - Live interactions without page refreshes
+### 🗄️ Core Entities
+- **Users**: Phone-based authentication with email support
+- **Notes**: Rich content with title, description, and resources
+- **NoteLikes**: Social interaction tracking
+- **NoteReposts**: Content sharing with optional comments
+- **PasswordTokens**: Secure password reset functionality
+
+### 🔗 Relationships
+- Users can create multiple notes
+- Notes can have multiple likes and reposts
+- Users can like and repost notes from others
+- Password tokens are linked to specific users
+
+### 📁 File Management
+- **Resource Attachment**: JSON array of file and URL resources
+- **Cloud Storage**: Multi-provider support (AWS S3, GCS, Azure)
+- **File Validation**: Size limits and type checking
+- **Async Processing**: Background file handling
+
+### 🔍 Search & Discovery
+- **User Search**: Find users by name or phone
+- **Note Search**: Full-text search across note content
+- **Admin Filters**: Advanced filtering in admin panel
+- **Public Feed**: Browse publicly available notes
+
+## 🎯 Current Implementation
+
+### 📝 Note Management
+- **Create & Edit**: Rich note creation with title, description, and content
+- **Resource Attachment**: Add URLs and file uploads to notes
+- **Visibility Control**: Set notes as public or private
+- **Share Links**: Generate unique sharing tokens for notes
+- **AI Processing**: Background AI curriculum generation (placeholder)
+
+### 👥 Social Features
+- **Like System**: Users can like notes from others
+- **Repost Feature**: Share notes with optional comments
+- **User Profiles**: Basic user management with phone-based authentication
+- **Public Feed**: Browse and interact with public notes
+
+### 🔐 Authentication & Security
+- **Phone Verification**: WhatsApp-based registration and login
+- **Password Reset**: Email-based password recovery
+- **Secure Tokens**: JWT-based authentication system
+- **Admin Access**: Administrative panel for user and content management
+
+### 🎨 User Interface
+- **Responsive Design**: Mobile-first approach with TailwindCSS
+- **Component-Based**: Type-safe HTML with Gomponents
+- **Interactive Elements**: HTMX for dynamic interactions
+- **Modern Styling**: DaisyUI components for consistent design
 
 ---
 
 ## 🛠️ Tech Stack
 
-### Backend
-- **[Echo](https://echo.labstack.com/)** - High-performance web framework
-- **[Ent](https://entgo.io/)** - Type-safe ORM with code generation
-- **[SQLite](https://sqlite.org/)** - Embedded database (easily swappable)
-- **[Backlite](https://github.com/mikestefanello/backlite)** - Background task processing
-
-### Frontend
-- **[Gomponents](https://github.com/maragudk/gomponents)** - HTML components in pure Go
-- **[HTMX](https://htmx.org/)** - Modern interactions without JavaScript
-- **[Alpine.js](https://alpinejs.dev/)** - Minimal JavaScript framework
-- **[DaisyUI](https://daisyui.com/)** - Beautiful Tailwind CSS components
-- **[Tailwind CSS](https://tailwindcss.com/)** - Utility-first CSS framework
+- **Backend**: Go with Fiber framework
+- **Database**: PostgreSQL with Ent ORM
+- **Frontend**: HTMX + DaisyUI + TailwindCSS
+- **Components**: Gomponents for type-safe HTML
+- **Authentication**: Phone-based with WhatsApp verification
+- **File Storage**: Multi-provider support (AWS S3, GCS, Azure Blob)
+- **Email**: SMTP integration for password reset
+- **Background Jobs**: Async task processing with worker queues
+- **Admin Panel**: User and content management interface
+- **Mobile Integration**: WhatsApp API for phone verification
 
 ### Development Tools
 - **[Air](https://github.com/air-verse/air)** - Live reloading
@@ -162,7 +199,7 @@ make ent-new name=Product
 make ent-gen
 ```
 
-### Adding New Pages
+### Development Workflow
 1. Create handler in `pkg/handlers/`
 2. Add route in `pkg/handlers/router.go`
 3. Create page component in `pkg/ui/pages/`
@@ -351,89 +388,106 @@ err := taskService.Queue(task)
 
 ## 🚀 Deployment
 
-### Educational Institution Setup
+### Local Development
 
-Zero is designed to be easily deployed in educational environments:
-
-#### Production Build
 ```bash
-# Build the application
+# Set up environment
+cp .env.example .env
+# Edit .env with your configuration
+
+# Run database migrations
+make migrate
+
+# Create admin user
+make admin phone=+1234567890
+
+# Start development server
+make dev
+```
+
+### Production Deployment
+
+```bash
+# Build binary
 make build
 
-# The binary will be created as ./tmp/main
-./tmp/main
+# Run production server
+./bin/zero
 ```
 
-#### Docker Deployment for Schools
-```dockerfile
-FROM golang:1.24-alpine AS builder
-WORKDIR /app
-COPY . .
-RUN make build
+### Docker Deployment
 
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
-WORKDIR /root/
-COPY --from=builder /app/tmp/main .
-COPY --from=builder /app/public ./public
-CMD ["./main"]
+```bash
+# Build Docker image
+docker build -t zero-notes .
+
+# Run with environment variables
+docker run -p 8080:8080 \
+  -e DATABASE_URL="postgres://user:pass@localhost/zero" \
+  -e SMTP_HOST="smtp.gmail.com" \
+  zero-notes
 ```
 
-#### Configuration for Educational Use
+### Environment Configuration
+
 ```bash
 # Database
-DATABASE_URL=sqlite://./school_data.db
+DATABASE_URL="postgres://user:password@localhost:5432/zero"
 
-# Server
-APP_PORT=8000
-APP_DOMAIN=learning.yourschool.edu
-
-# Email for notifications
-SMTP_HOST=smtp.yourschool.edu
+# SMTP for password reset
+SMTP_HOST="smtp.gmail.com"
 SMTP_PORT=587
-SMTP_USERNAME=noreply@yourschool.edu
-SMTP_PASSWORD=your-institutional-password
+SMTP_USERNAME="your-email@gmail.com"
+SMTP_PASSWORD="your-app-password"
 
-# Security
-SESSION_SECRET=your-secure-school-key
-CSRF_SECRET=your-csrf-secret
+# WhatsApp Integration (360dialog)
+WHATSAPP_API_KEY="your-360dialog-api-key"
+WHATSAPP_CHANNEL_ID="your-channel-id"
 
-# Educational settings
-SCHOOL_NAME="Your Institution Name"
-ADMIN_EMAIL=admin@yourschool.edu
+# Cloud Storage (optional)
+AWS_ACCESS_KEY_ID="your-aws-key"
+AWS_SECRET_ACCESS_KEY="your-aws-secret"
+AWS_REGION="us-east-1"
+S3_BUCKET="your-bucket"
+
+# Or Google Cloud Storage
+GCS_BUCKET="your-gcs-bucket"
+GOOGLE_APPLICATION_CREDENTIALS="path/to/service-account.json"
+
+# Or Azure Blob Storage
+AZURE_STORAGE_ACCOUNT="your-account"
+AZURE_STORAGE_KEY="your-key"
+AZURE_CONTAINER="your-container"
 ```
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions from educators, developers, and students! Here's how you can help improve the learning experience:
+We welcome contributions from developers interested in note-taking and content management platforms!
 
-### Development Setup
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/educational-feature`
-3. Make your changes
-4. Run tests: `make test`
-5. Commit your changes: `git commit -m 'Add educational feature'`
-6. Push to the branch: `git push origin feature/educational-feature`
-7. Open a Pull Request
+### 🎯 Focus Areas
+- **Core Features**: Note management, social features, file handling
+- **User Experience**: Interface improvements, mobile responsiveness
+- **Performance**: Database optimization, background job processing
+- **Integration**: Cloud storage providers, notification systems
+- **API Development**: REST endpoints, authentication improvements
 
-### Guidelines
-- Follow Go conventions and best practices
-- Consider educational use cases and accessibility
+### 📋 Development Guidelines
+- Follow Go best practices and conventions
 - Write tests for new features
-- Update documentation as needed
-- Keep the student/educator experience in mind
+- Update documentation for any changes
+- Ensure mobile-first responsive design
+- Maintain type safety with Gomponents
 
-### Areas for Contribution
-- 🎓 Educational features (quiz types, study tools)
-- 🐛 Bug fixes and performance improvements
-- 📚 Documentation and tutorials
-- 🎨 UI/UX enhancements for better learning
-- ♿ Accessibility improvements
-- 🌐 Internationalization for global education
-- 📊 Analytics and progress tracking features
-- 🔧 Administrative tools for educators
+### 🚀 Getting Started
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes following the existing patterns
+4. Test thoroughly with different user scenarios
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request with detailed description
 
 ---
 
