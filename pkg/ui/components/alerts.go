@@ -38,33 +38,44 @@ func FlashMessages(r *ui.Request) Node {
 }
 
 func Alert(color Color, text string) Node {
-	var class string
+	var bgClass, borderClass, textClass string
 
 	switch color {
 	case ColorSuccess:
-		class = "alert-success"
+		bgClass = "bg-green-50"
+		borderClass = "border-green-400"
+		textClass = "text-green-800"
 	case ColorInfo:
-		class = "alert-info"
+		bgClass = "bg-blue-50"
+		borderClass = "border-blue-400"
+		textClass = "text-blue-800"
 	case ColorWarning:
-		class = "alert-warning"
+		bgClass = "bg-yellow-50"
+		borderClass = "border-yellow-400"
+		textClass = "text-yellow-800"
 	case ColorError:
-		class = "alert-error"
+		bgClass = "bg-red-50"
+		borderClass = "border-red-400"
+		textClass = "text-red-800"
 	}
 
 	return Div(
 		Role("alert"),
-		Class("alert mb-2 "+class),
+		Class("mb-4 px-4 py-3 rounded-lg border-l-4 shadow-sm flex items-center justify-between " + bgClass + " " + borderClass),
 		Attr("x-data", "{show: true}"),
 		Attr("x-show", "show"),
 		Attr("x-init", "setTimeout(() => show = false, 5000)"), // Auto-dismiss after 5 seconds
 		Attr("x-transition:leave", "transition ease-in duration-300"),
-		Attr("x-transition:leave-start", "opacity-100 transform translate-x-0"),
-		Attr("x-transition:leave-end", "opacity-0 transform translate-x-full"),
+		Attr("x-transition:leave-start", "opacity-100 transform translate-y-0"),
+		Attr("x-transition:leave-end", "opacity-0 transform -translate-y-2"),
+		Span(
+			Class("font-medium " + textClass),
+			Text(text),
+		),
 		Span(
 			Attr("@click", "show = false"),
-			Class("cursor-pointer"),
+			Class("cursor-pointer " + textClass),
 			icons.XCircle(),
 		),
-		Span(Text(text)),
 	)
 }

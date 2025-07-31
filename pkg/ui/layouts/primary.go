@@ -2,6 +2,7 @@ package layouts
 
 import (
 	"strings"
+
 	"github.com/r-scheele/zero/pkg/routenames"
 	"github.com/r-scheele/zero/pkg/ui"
 	"github.com/r-scheele/zero/pkg/ui/cache"
@@ -63,25 +64,25 @@ func Primary(r *ui.Request, content Node) Node {
 				// Use the same header for all users
 				unifiedHeader(r),
 				If(r.IsAuth,
-				// Authenticated user layout with sidebar
-				Group{
-					userSidebar(r), // Fixed positioned sidebar
-					Main(
-					Class("bg-slate-50 min-h-screen lg:ml-80"), // Only apply left margin on large screens where sidebar is visible
-						Div(
-							Class("px-4 sm:px-6 lg:px-8 xl:px-12 py-6 lg:py-8 pb-20 lg:pb-8"), // Extra bottom padding on mobile for nav
+					// Authenticated user layout with sidebar
+					Group{
+						userSidebar(r), // Fixed positioned sidebar
+						Main(
+							Class("bg-slate-50 min-h-screen lg:ml-80"), // Only apply left margin on large screens where sidebar is visible
 							Div(
-								Class("max-w-7xl mx-auto"),
-								ID("main-content"),
-								FlashMessages(r),
+								Class("px-4 sm:px-6 lg:px-8 xl:px-12 py-6 lg:py-8 pb-20 lg:pb-8"), // Extra bottom padding on mobile for nav
 								Div(
-									Class("space-y-6"),
-									content,
+									Class("max-w-7xl mx-auto"),
+									ID("main-content"),
+									FlashMessages(r),
+									Div(
+										Class("space-y-6"),
+										content,
+									),
 								),
 							),
 						),
-					),
-				},
+					},
 				),
 				If(!r.IsAuth,
 					// Non-authenticated user layout without sidebar
@@ -196,16 +197,21 @@ func userSidebar(r *ui.Request) Node {
 	userMenuItem := func(icon Node, title, href string) Node {
 		// Path matching with special handling for profile and notes sections
 		isActive := r.CurrentPath == href
-		
+
 		// Special case for Profile section - highlight when in any profile-related page
-		if href == "/profile" && (r.CurrentPath == "/profile" || r.CurrentPath == "/profile/edit" || 
-			r.CurrentPath == "/profile/update" || r.CurrentPath == "/profile/picture" || 
+		if href == "/profile" && (r.CurrentPath == "/profile" || r.CurrentPath == "/profile/edit" ||
+			r.CurrentPath == "/profile/update" || r.CurrentPath == "/profile/picture" ||
 			r.CurrentPath == "/profile/change-password" || r.CurrentPath == "/profile/deactivate") {
 			isActive = true
 		}
-		
+
 		// Special case for Notes section - highlight when in any notes-related page
 		if href == "/notes" && (strings.HasPrefix(r.CurrentPath, "/notes")) {
+			isActive = true
+		}
+
+		// Special case for Study Groups section - highlight when in any study-groups-related page
+		if href == "/study-groups" && (strings.HasPrefix(r.CurrentPath, "/study-groups")) {
 			isActive = true
 		}
 
@@ -262,7 +268,7 @@ func userSidebar(r *ui.Request) Node {
 			Class("p-6 h-full"),
 			Style("padding-top: 5rem !important;"), // Add top padding to account for fixed header
 			Div(
-				Class("flex flex-col h-full"), // Full height container
+				Class("flex flex-col h-full"),             // Full height container
 				Style("min-height: calc(100vh - 200px);"), // Ensure minimum height for proper flex behavior
 				Nav(
 					Class("flex-1 flex flex-col"),
@@ -287,8 +293,9 @@ func userSidebar(r *ui.Request) Node {
 								userMenuItem(icons.CircleStack(), "Dashboard", "/dashboard"),
 								userMenuItem(icons.Star(), "Quizzes", "/quizzes"),
 								userMenuItem(icons.Archive(), "Notes", "/notes"),
+								userMenuItem(icons.UserCircle(), "Study Groups", "/study-groups"),
 								userMenuItem(icons.UserCircle(), "Profile", "/profile"),
-								userMenuItem(icons.Document(), "Files", "/files"), // Use direct path
+								userMenuItem(icons.Document(), "Files", "/files"),
 							),
 						),
 						// Visual separator line after regular nav items - only for verified users
@@ -313,23 +320,23 @@ func userSidebar(r *ui.Request) Node {
 							Style("min-height: calc(100vh - 400px); min-height: calc(100svh - 400px);"), // Maximize space to push button to bottom
 						),
 						// Sign Out at the absolute bottom with visual separation - always show for authenticated users
-			Div(
-				Class("mt-auto pt-6 border-t border-slate-200"),
-				Style("position: absolute; bottom: 0; left: 0; right: 0; background: white; padding: 1.5rem; border-top: 1px solid rgb(226 232 240);"), // Absolute positioning at bottom
-				A(
-					Href(r.Path(routenames.Logout)),
-					Class("user-nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-all duration-200"),
-					Attr("hx-boost", "false"), // Disable HTMX boost for reliable logout
-					Div(
-						Class("w-5 h-5 text-red-600"),
-						icons.Exit(),
-					),
-					Span(
-						Class("font-medium text-sm text-red-600"),
-						Text("Sign Out"),
-					),
-				),
-			),
+						Div(
+							Class("mt-auto pt-6 border-t border-slate-200"),
+							Style("position: absolute; bottom: 0; left: 0; right: 0; background: white; padding: 1.5rem; border-top: 1px solid rgb(226 232 240);"), // Absolute positioning at bottom
+							A(
+								Href(r.Path(routenames.Logout)),
+								Class("user-nav-item flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-all duration-200"),
+								Attr("hx-boost", "false"), // Disable HTMX boost for reliable logout
+								Div(
+									Class("w-5 h-5 text-red-600"),
+									icons.Exit(),
+								),
+								Span(
+									Class("font-medium text-sm text-red-600"),
+									Text("Sign Out"),
+								),
+							),
+						),
 					),
 				),
 			),
@@ -347,14 +354,14 @@ func userBottomNavigation(r *ui.Request) Node {
 	userNavItem := func(icon Node, title, href string) Node {
 		// Path matching with special handling for profile and notes sections
 		isActive := r.CurrentPath == href
-		
+
 		// Special case for Profile section - highlight when in any profile-related page
-		if href == "/profile" && (r.CurrentPath == "/profile" || r.CurrentPath == "/profile/edit" || 
-			r.CurrentPath == "/profile/update" || r.CurrentPath == "/profile/picture" || 
+		if href == "/profile" && (r.CurrentPath == "/profile" || r.CurrentPath == "/profile/edit" ||
+			r.CurrentPath == "/profile/update" || r.CurrentPath == "/profile/picture" ||
 			r.CurrentPath == "/profile/change-password" || r.CurrentPath == "/profile/deactivate") {
 			isActive = true
 		}
-		
+
 		// Special case for Notes section - highlight when in any notes-related page
 		if href == "/notes" && (strings.HasPrefix(r.CurrentPath, "/notes")) {
 			isActive = true
@@ -430,12 +437,13 @@ func userBottomNavigation(r *ui.Request) Node {
 						// Check if current page is in the "More" section
 						isMoreActive := r.CurrentPath == "/profile" || r.CurrentPath == "/files" ||
 							strings.HasPrefix(r.CurrentPath, "/profile/") ||
+							strings.HasPrefix(r.CurrentPath, "/study-groups") ||
 							strings.HasPrefix(r.CurrentPath, "/admin") ||
 							r.CurrentPath == "/cache"
-						
+
 						var iconContainerClass string
 						var textClass string
-						
+
 						if isMoreActive {
 							iconContainerClass = "flex items-center justify-center w-6 h-6 rounded-lg transition-all duration-300 bg-blue-100 text-blue-600"
 							textClass = "text-xs font-semibold transition-all duration-300 text-blue-600"
@@ -443,7 +451,7 @@ func userBottomNavigation(r *ui.Request) Node {
 							iconContainerClass = "flex items-center justify-center w-6 h-6 rounded-lg transition-all duration-300 group-hover:bg-slate-100"
 							textClass = "text-xs font-medium transition-all duration-300 text-slate-500 group-hover:text-slate-700"
 						}
-						
+
 						return Button(
 							ID("more_nav_button"),
 							Class("flex flex-col items-center justify-center p-3 transition-all duration-300 ease-out rounded-2xl group"),
@@ -488,6 +496,13 @@ func mobileNavModal(r *ui.Request) Node {
 			),
 			Div(
 				Class("space-y-1"),
+				A(
+					Href("/study-groups"),
+					Class("flex items-center gap-3 p-2 rounded-md hover:bg-slate-100 transition-colors text-sm"),
+					Attr("onclick", "document.getElementById('mobile_nav_modal').classList.add('hidden'); document.getElementById('more_nav_button').classList.remove('more-active');"),
+					icons.UserCircle(),
+					Text("Study Groups"),
+				),
 				A(
 					Href("/profile"),
 					Class("flex items-center gap-3 p-2 rounded-md hover:bg-slate-100 transition-colors text-sm"),
@@ -690,46 +705,46 @@ func unifiedHeader(r *ui.Request) Node {
 						Div(
 							Class("flex items-center space-x-3"),
 							A(
-							Href(func() string {
-								if r != nil {
-									return r.Path(routenames.Profile)
-								}
-								return "/profile"
-							}()),
-							Class("block"),
+								Href(func() string {
+									if r != nil {
+										return r.Path(routenames.Profile)
+									}
+									return "/profile"
+								}()),
+								Class("block"),
 								func() Node {
-								if r.AuthUser != nil && r.AuthUser.ProfilePicture != nil && *r.AuthUser.ProfilePicture != "" {
-									return Img(
-										Src("/files/"+*r.AuthUser.ProfilePicture),
-										Alt("Profile Picture"),
-										Class("w-8 h-8 rounded-full object-cover border-2 border-gray-200 hover:border-blue-300 transition-colors cursor-pointer"),
-									)
-								} else {
-									return Div(
-										Class("w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold text-sm hover:bg-blue-600 transition-colors cursor-pointer"),
-										Text(func() string {
-											if r.AuthUser != nil && r.AuthUser.Name != "" {
-												return string(r.AuthUser.Name[0])
-											}
-											return "U"
-										}()),
-									)
-								}
-							}(),
+									if r.AuthUser != nil && r.AuthUser.ProfilePicture != nil && *r.AuthUser.ProfilePicture != "" {
+										return Img(
+											Src("/files/"+*r.AuthUser.ProfilePicture),
+											Alt("Profile Picture"),
+											Class("w-8 h-8 rounded-full object-cover border-2 border-gray-200 hover:border-blue-300 transition-colors cursor-pointer"),
+										)
+									} else {
+										return Div(
+											Class("w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold text-sm hover:bg-blue-600 transition-colors cursor-pointer"),
+											Text(func() string {
+												if r.AuthUser != nil && r.AuthUser.Name != "" {
+													return string(r.AuthUser.Name[0])
+												}
+												return "U"
+											}()),
+										)
+									}
+								}(),
 							),
 							// Welcome text (hidden on mobile)
 							Div(
 								Class("hidden md:block text-sm text-gray-600"),
 								func() Node {
-								name := "User"
-								if r.AuthUser != nil && r.AuthUser.Name != "" {
-									name = r.AuthUser.Name
-								}
-								return Span(
-									Class("font-medium"),
-									Text("Welcome, "+name),
-								)
-							}(),
+									name := "User"
+									if r.AuthUser != nil && r.AuthUser.Name != "" {
+										name = r.AuthUser.Name
+									}
+									return Span(
+										Class("font-medium"),
+										Text("Welcome, "+name),
+									)
+								}(),
 							),
 						),
 					),
@@ -805,15 +820,15 @@ func unifiedFooter(r *ui.Request) Node {
 								Text("Profile"),
 							),
 							A(
-						Href(func() string {
-							if r != nil {
-								return r.Path(routenames.Logout)
-							}
-							return "/logout"
-						}()),
-						Class("hover:text-red-600 transition-colors"),
-						Text("Sign Out"),
-					),
+								Href(func() string {
+									if r != nil {
+										return r.Path(routenames.Logout)
+									}
+									return "/logout"
+								}()),
+								Class("hover:text-red-600 transition-colors"),
+								Text("Sign Out"),
+							),
 						},
 					),
 				),

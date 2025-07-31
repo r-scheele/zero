@@ -1,7 +1,16 @@
 package pages
 
 import (
+	"context"
+	"fmt"
+	"time"
+	
 	"github.com/labstack/echo/v4"
+	"github.com/r-scheele/zero/ent"
+	"github.com/r-scheele/zero/ent/note"
+	"github.com/r-scheele/zero/ent/notelike"
+	"github.com/r-scheele/zero/ent/noterepost"
+	"github.com/r-scheele/zero/ent/user"
 	"github.com/r-scheele/zero/pkg/redirect"
 	"github.com/r-scheele/zero/pkg/ui"
 	"github.com/r-scheele/zero/pkg/ui/layouts"
@@ -25,7 +34,7 @@ func Home(ctx echo.Context, posts *models.Posts) error {
 }
 
 // Dashboard function for the new dashboard route
-func Dashboard(ctx echo.Context, posts *models.Posts) error {
+func Dashboard(ctx echo.Context, posts *models.Posts, orm *ent.Client) error {
 	r := ui.NewRequest(ctx)
 	r.Title = "Dashboard"
 	r.Metatags.Description = "Your learning dashboard"
@@ -35,7 +44,7 @@ func Dashboard(ctx echo.Context, posts *models.Posts) error {
 		return redirect.New(r.Context).URL("/admin").Go()
 	}
 
-	return authenticatedDashboard(r, posts)
+	return authenticatedDashboard(r, posts, orm)
 }
 
 // Landing page for non-authenticated users
@@ -538,7 +547,7 @@ func authenticatedHomePage(r *ui.Request, posts *models.Posts) error {
 }
 
 // Dashboard for authenticated users
-func authenticatedDashboard(r *ui.Request, posts *models.Posts) error {
+func authenticatedDashboard(r *ui.Request, posts *models.Posts, orm *ent.Client) error {
 	// If user is admin, redirect to admin dashboard
 	if r.IsAdmin {
 		return redirect.New(r.Context).URL("/admin").Go()
@@ -586,6 +595,39 @@ func authenticatedDashboard(r *ui.Request, posts *models.Posts) error {
 	}
 
 	cards := func() Node {
+		// Fetch user statistics and recent activity
+		var notesCount, likesCount, repostsCount int
+		var recentNote *ent.Note
+		var recentLike *ent.NoteLike
+		if r.AuthUser != nil {
+			// Count user's notes
+			notesCount, _ = orm.Note.Query().
+				Where(note.HasOwnerWith(user.ID(r.AuthUser.ID))).
+				Count(context.Background())
+			
+			// Count user's likes
+			likesCount, _ = orm.NoteLike.Query().
+				Where(notelike.HasUserWith(user.ID(r.AuthUser.ID))).
+				Count(context.Background())
+			
+			// Count user's reposts
+			repostsCount, _ = orm.NoteRepost.Query().
+				Where(noterepost.HasUserWith(user.ID(r.AuthUser.ID))).
+				Count(context.Background())
+			
+			// Get most recent note
+			recentNote, _ = orm.Note.Query().
+				Where(note.HasOwnerWith(user.ID(r.AuthUser.ID))).
+				Order(ent.Desc(note.FieldCreatedAt)).
+				First(context.Background())
+			
+			// Get most recent like
+			recentLike, _ = orm.NoteLike.Query().
+				Where(notelike.HasUserWith(user.ID(r.AuthUser.ID))).
+				Order(ent.Desc(notelike.FieldCreatedAt)).
+				First(context.Background())
+		}
+		
 		return Div(
 			Class("space-y-6"),
 			// Quick Actions Grid - Only show for verified users
@@ -693,13 +735,122 @@ func authenticatedDashboard(r *ui.Request, posts *models.Posts) error {
 			Div(
 				Class("bg-white rounded-lg p-6 shadow-sm border border-gray-200"),
 				H3(Class("text-lg font-semibold text-gray-900 mb-4"), Text("Recent Activity")),
-				P(Class("text-gray-500"), Text("Your recent quizzes and documents will appear here.")),
+				Div(
+					Class("space-y-3"),
+					// Show recent activity if available
+					If(recentNote != nil,
+						Div(
+							Class("flex items-center gap-3 p-3 bg-amber-50 rounded-lg border border-amber-200"),
+							Div(
+								Class("w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center"),
+								Span(Class("text-amber-600"), Text("📝")),
+							),
+							Div(
+								Class("flex-1"),
+								P(Class("font-medium text-gray-900"), Text(fmt.Sprintf("Created: %s", func() string {
+									if recentNote == nil {
+										return "Unknown note"
+									}
+									if len(recentNote.Title) > 30 {
+										return recentNote.Title[:30] + "..."
+									}
+									return recentNote.Title
+								}()))),
+								P(Class("text-sm text-gray-500"), Text(func() string {
+									if recentNote == nil {
+										return "Unknown time"
+									}
+									duration := time.Since(recentNote.CreatedAt)
+									if duration.Hours() < 1 {
+										return fmt.Sprintf("%.0f minutes ago", duration.Minutes())
+									} else if duration.Hours() < 24 {
+										return fmt.Sprintf("%.0f hours ago", duration.Hours())
+									}
+									return fmt.Sprintf("%.0f days ago", duration.Hours()/24)
+								}())),
+							),
+						),
+					),
+					If(recentLike != nil,
+						Div(
+							Class("flex items-center gap-3 p-3 bg-red-50 rounded-lg border border-red-200"),
+							Div(
+								Class("w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center"),
+								Span(Class("text-red-600"), Text("❤️")),
+							),
+							Div(
+								Class("flex-1"),
+								P(Class("font-medium text-gray-900"), Text("Liked a note")),
+								P(Class("text-sm text-gray-500"), Text(func() string {
+									if recentLike == nil {
+										return "Unknown time"
+									}
+									duration := time.Since(recentLike.CreatedAt)
+									if duration.Hours() < 1 {
+										return fmt.Sprintf("%.0f minutes ago", duration.Minutes())
+									} else if duration.Hours() < 24 {
+										return fmt.Sprintf("%.0f hours ago", duration.Hours())
+									}
+									return fmt.Sprintf("%.0f days ago", duration.Hours()/24)
+								}())),
+							),
+						),
+					),
+					// Show message if no recent activity
+					If(recentNote == nil && recentLike == nil,
+						P(Class("text-gray-500 text-center py-4"), Text("No recent activity. Start by creating a note!")),
+					),
+					// View All Activity Link
+					A(
+						Href("/notes"),
+						Class("block text-center text-blue-600 hover:text-blue-700 font-medium text-sm mt-4"),
+						Text("View all notes →"),
+					),
+				),
 			),
 			// Study Statistics Card
 			Div(
 				Class("bg-white rounded-lg p-6 shadow-sm border border-gray-200"),
 				H3(Class("text-lg font-semibold text-gray-900 mb-4"), Text("Study Statistics")),
-				P(Class("text-gray-500"), Text("Your learning progress and achievements will be displayed here.")),
+				Div(
+					Class("grid grid-cols-2 gap-4"),
+					// Notes Created
+					Div(
+						Class("text-center p-4 bg-amber-50 rounded-lg border border-amber-200"),
+						Div(
+							Class("text-2xl font-bold text-amber-600 mb-1"),
+							Text(fmt.Sprintf("%d", notesCount)),
+						),
+						P(Class("text-sm text-amber-700 font-medium"), Text("Notes Created")),
+					),
+					// Notes Liked
+					Div(
+						Class("text-center p-4 bg-red-50 rounded-lg border border-red-200"),
+						Div(
+							Class("text-2xl font-bold text-red-600 mb-1"),
+							Text(fmt.Sprintf("%d", likesCount)),
+						),
+						P(Class("text-sm text-red-700 font-medium"), Text("Notes Liked")),
+					),
+					// Notes Shared
+					Div(
+						Class("text-center p-4 bg-green-50 rounded-lg border border-green-200"),
+						Div(
+							Class("text-2xl font-bold text-green-600 mb-1"),
+							Text(fmt.Sprintf("%d", repostsCount)),
+						),
+						P(Class("text-sm text-green-700 font-medium"), Text("Notes Shared")),
+					),
+					// Total Engagement
+					Div(
+						Class("text-center p-4 bg-blue-50 rounded-lg border border-blue-200"),
+						Div(
+							Class("text-2xl font-bold text-blue-600 mb-1"),
+							Text(fmt.Sprintf("%d", notesCount+likesCount+repostsCount)),
+						),
+						P(Class("text-sm text-blue-700 font-medium"), Text("Total Engagement")),
+					),
+				),
 			),
 		)
 	}

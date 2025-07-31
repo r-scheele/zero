@@ -97,76 +97,70 @@ func ViewNote(ctx echo.Context, note *ent.Note) error {
 	}
 
 	content := Div(
-		Class("max-w-4xl mx-auto space-y-8"),
+		Class("max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8"),
 
-		// Header with actions
+		// Header section
 		Div(
-			Class("flex justify-between items-start"),
+			Class("mb-8"),
+			H1(
+				Class("text-2xl sm:text-3xl font-bold text-gray-900 mb-4 break-words"),
+				Text(note.Title),
+			),
 			Div(
-				Class("flex-1"),
-				H1(
-					Class("text-3xl font-bold text-gray-900 mb-2"),
-					Text(note.Title),
-				),
+				Class("flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"),
 				Div(
-					Class("flex items-center space-x-4 text-sm text-gray-600"),
-					Span(
-						Text("By "),
-						If(note.Edges.Owner != nil,
-							Strong(Text(note.Edges.Owner.Name)),
+					Class("flex flex-wrap items-center gap-4 text-sm text-gray-600"),
+					If(note.Edges.Owner != nil,
+						Span(
+							Class("font-medium text-gray-900"),
+							Text("By "+note.Edges.Owner.Name),
 						),
-					),
-					Span(
-						Text("•"),
 					),
 					Span(
 						Text(note.CreatedAt.Format("Jan 2, 2006")),
 					),
 					If(string(note.Visibility) == "public",
 						Span(
-							Class("inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800"),
+							Class("inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"),
 							Text("Public"),
 						),
 					),
 					If(string(note.Visibility) == "private",
 						Span(
-							Class("inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-800"),
+							Class("inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"),
 							Text("Private"),
 						),
 					),
 				),
-			),
-
-			// Actions (only for owner)
-			If(isOwner,
-				Div(
-					Class("flex items-center space-x-3"),
-
-					// Share button
-					Button(
-						Type("button"),
-						Class("inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50"),
-						Attr("onclick", fmt.Sprintf("copyShareLink('%s')", note.ShareToken)),
-						Text("Share"),
-					),
-
-					// Edit button
-					A(
-						Href(r.Path(routenames.Notes+".edit", note.ID)),
-						Class("inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50"),
-						Text("Edit"),
-					),
-
-					// Delete button
-					Form(
-						Method("POST"),
-						Action(r.Path(routenames.Notes+".delete", note.ID)),
-						Attr("onsubmit", "return confirm('Are you sure you want to delete this note?')"),
-						CSRF(r),
+				// Actions (only for owner)
+				If(isOwner,
+					Div(
+						Class("flex items-center gap-2"),
+						// Share button
 						Button(
-							Type("submit"),
-							Class("inline-flex items-center px-3 py-2 border border-red-300 rounded-md text-sm text-red-700 bg-white hover:bg-red-50"),
-							Text("Delete"),
+							Type("button"),
+							Class("px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"),
+							Attr("onclick", fmt.Sprintf("copyShareLink('%s')", note.ShareToken)),
+							Text("Share"),
+						),
+						// Edit button
+						A(
+							Href(r.Path(routenames.Notes+".edit", note.ID)),
+							Class("px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-300 rounded-md hover:bg-blue-100 transition-colors"),
+							Text("Edit"),
+						),
+						// Delete button
+						Form(
+							Class("inline"),
+							Method("POST"),
+							Action(r.Path(routenames.Notes+".delete", note.ID)),
+							Attr("onsubmit", "return confirm('Are you sure you want to delete this note?')"),
+							CSRF(r),
+							Button(
+								Type("submit"),
+								Class("px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 border border-red-300 rounded-md hover:bg-red-100 transition-colors"),
+								Text("Delete"),
+							),
 						),
 					),
 				),
@@ -176,9 +170,13 @@ func ViewNote(ctx echo.Context, note *ent.Note) error {
 		// Description
 		If(note.Description != "",
 			Div(
-				Class("bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg"),
+				Class("mb-6 p-4 bg-blue-50 border-l-4 border-blue-400 rounded-r-md"),
+				H3(
+					Class("text-sm font-semibold text-blue-900 mb-2"),
+					Text("Description"),
+				),
 				P(
-					Class("text-blue-800"),
+					Class("text-blue-800 leading-relaxed"),
 					Text(note.Description),
 				),
 			),
@@ -187,15 +185,15 @@ func ViewNote(ctx echo.Context, note *ent.Note) error {
 		// Content
 		If(note.Content != "",
 			Div(
-				Class("bg-white rounded-lg border border-gray-200 p-6"),
+				Class("mb-6"),
 				H2(
-					Class("text-xl font-semibold text-gray-900 mb-4"),
+					Class("text-lg font-semibold text-gray-900 mb-4"),
 					Text("Content"),
 				),
 				Div(
-					Class("prose max-w-none"),
+					Class("bg-white border border-gray-200 rounded-lg p-6"),
 					Pre(
-						Class("whitespace-pre-wrap text-gray-700 leading-relaxed"),
+						Class("whitespace-pre-wrap text-gray-700 leading-relaxed break-words font-sans text-base"),
 						Text(note.Content),
 					),
 				),
@@ -205,15 +203,15 @@ func ViewNote(ctx echo.Context, note *ent.Note) error {
 		// AI Curriculum (if available)
 		If(note.AiCurriculum != "",
 			Div(
-				Class("bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200 p-6"),
+				Class("mb-6"),
 				H2(
-					Class("text-xl font-semibold text-purple-900 mb-4 flex items-center"),
+					Class("text-lg font-semibold text-gray-900 mb-4"),
 					Text("AI-Generated Curriculum"),
 				),
 				Div(
-					Class("prose max-w-none"),
+					Class("bg-purple-50 border border-purple-200 rounded-lg p-6"),
 					Pre(
-						Class("whitespace-pre-wrap text-purple-800 leading-relaxed"),
+						Class("whitespace-pre-wrap text-purple-800 leading-relaxed font-sans text-base"),
 						Text(note.AiCurriculum),
 					),
 				),
@@ -223,11 +221,11 @@ func ViewNote(ctx echo.Context, note *ent.Note) error {
 		// AI Processing indicator
 		If(note.AiProcessing,
 			Div(
-				Class("bg-yellow-50 border border-yellow-200 rounded-lg p-4"),
+				Class("mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg"),
 				Div(
-					Class("flex items-center"),
+					Class("flex items-center gap-3"),
 					Div(
-						Class("animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600 mr-3"),
+						Class("animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600"),
 					),
 					Text("AI is processing this note to generate a curriculum..."),
 				),
@@ -236,7 +234,7 @@ func ViewNote(ctx echo.Context, note *ent.Note) error {
 
 		// JavaScript for share functionality
 		Script(
-			Text(fmt.Sprintf(`
+			Raw(fmt.Sprintf(`
 				function copyShareLink(token) {
 					const shareUrl = '%s/share/' + token;
 					navigator.clipboard.writeText(shareUrl).then(function() {
@@ -259,15 +257,6 @@ func EditNote(ctx echo.Context, form *forms.EditNote) error {
 
 	content := Div(
 		Class("max-w-4xl mx-auto"),
-
-		// Header
-		Div(
-			Class("mb-8"),
-			H1(
-				Class("text-3xl font-bold text-gray-900 mb-2"),
-				Text("Edit Note"),
-			),
-		),
 
 		// Form
 		form.Render(r),

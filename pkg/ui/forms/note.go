@@ -297,108 +297,83 @@ func (f *CreateNote) Render(r *ui.Request) Node {
 
 		CSRF(r),
 
-		// JavaScript for dynamic visibility handling, file validation, and URL management
+		// Inline JavaScript for note form functionality
 		Script(
 			Attr("type", "text/javascript"),
 			Raw(fmt.Sprintf(`
-				// Visibility handling
-				document.getElementById('visibility').addEventListener('change', function() {
+				// Visibility handling for permission levels
+				function updatePermissionVisibility() {
+					const visibilitySelect = document.getElementById('visibility');
 					const permissionContainer = document.getElementById('permission-level-container');
-					if (this.value === 'public') {
-						permissionContainer.classList.remove('hidden');
-						permissionContainer.classList.add('block');
-					} else {
-						permissionContainer.classList.remove('block');
-						permissionContainer.classList.add('hidden');
+					
+					if (visibilitySelect && permissionContainer) {
+						if (visibilitySelect.value === 'public') {
+							permissionContainer.classList.remove('hidden');
+							permissionContainer.classList.add('block');
+						} else {
+							permissionContainer.classList.add('hidden');
+							permissionContainer.classList.remove('block');
+						}
 					}
-				});
-				
+				}
+
 				// File upload validation
-				document.getElementById('file-upload').addEventListener('change', function(e) {
-					const files = e.target.files;
-					const maxFiles = %d;
-					const maxFileSize = %d;
-					const maxTotalSize = %d;
+				function initializeFileValidation(maxFiles, maxFileSize, maxTotalSize) {
+					const fileInput = document.getElementById('file-upload');
+					if (!fileInput) return;
 					
-					if (files.length > maxFiles) {
-						alert('Maximum ' + maxFiles + ' files allowed. Please select fewer files.');
-						e.target.value = '';
-						return;
-					}
-					
-					let totalSize = 0;
-					for (let i = 0; i < files.length; i++) {
-						if (files[i].size > maxFileSize) {
-							const maxSizeMB = Math.round(maxFileSize / (1024 * 1024));
-							alert('File "' + files[i].name + '" exceeds ' + maxSizeMB + 'MB limit. Please choose a smaller file.');
+					fileInput.addEventListener('change', function(e) {
+						const files = e.target.files;
+						
+						if (files.length > maxFiles) {
+							alert('Maximum ' + maxFiles + ' files allowed. Please select fewer files.');
 							e.target.value = '';
 							return;
 						}
-						totalSize += files[i].size;
-					}
-					
-					if (totalSize > maxTotalSize) {
-						const maxTotalMB = Math.round(maxTotalSize / (1024 * 1024));
-						alert('Total file size exceeds ' + maxTotalMB + 'MB limit. Please select fewer or smaller files.');
-						e.target.value = '';
-						return;
-					}
-					
-					// Show selected files info
-					if (files.length > 0) {
-						const sizeInMB = (totalSize / (1024 * 1024)).toFixed(2);
-						console.log('Selected ' + files.length + ' files (' + sizeInMB + 'MB total)');
-					}
-				});
-				
+						
+						let totalSize = 0;
+						for (let i = 0; i < files.length; i++) {
+							if (files[i].size > maxFileSize) {
+								const maxSizeMB = Math.round(maxFileSize / (1024 * 1024));
+								alert('File "' + files[i].name + '" exceeds ' + maxSizeMB + 'MB limit. Please choose a smaller file.');
+								e.target.value = '';
+								return;
+							}
+							totalSize += files[i].size;
+						}
+						
+						if (totalSize > maxTotalSize) {
+							const maxTotalMB = Math.round(maxTotalSize / (1024 * 1024));
+							alert('Total file size exceeds ' + maxTotalMB + 'MB limit. Please select smaller files.');
+							e.target.value = '';
+							return;
+						}
+					});
+				}
+
 				// URL management functionality
 				function addUrlInput() {
-					console.log('addUrlInput function called');
 					const newUrlInput = document.getElementById('new-url-input');
-					console.log('newUrlInput element:', newUrlInput);
+					const displayContainer = document.getElementById('url-display-container');
 					
-					if (!newUrlInput) {
-						console.error('Could not find new-url-input element');
-						return;
-					}
+					if (!newUrlInput || !displayContainer) return;
 					
 					const urlValue = newUrlInput.value.trim();
-					console.log('URL value:', urlValue);
+					if (!urlValue) return;
 					
-					// Check if input has a value
-					if (!urlValue) {
-						console.log('No URL value, focusing input');
-						newUrlInput.focus();
-						return;
-					}
-					
-					// Add the URL to the display area
-					const displayContainer = document.getElementById('added-urls-display');
-					console.log('displayContainer element:', displayContainer);
-					
-					if (!displayContainer) {
-						console.error('Could not find added-urls-display element');
-						return;
-					}
-					
-					const urlIndex = displayContainer.children.length;
-					console.log('Creating URL display element, index:', urlIndex);
-					
+					const urlIndex = Date.now();
 					const urlDisplay = document.createElement('div');
 					urlDisplay.className = 'flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-md group hover:bg-gray-100 transition-colors';
 					
-					// Create URL text div
 					const urlTextDiv = document.createElement('div');
 					urlTextDiv.className = 'flex-1 text-sm text-gray-700 break-all';
 					urlTextDiv.textContent = urlValue;
 					
-					// Create hidden input
 					const hiddenInput = document.createElement('input');
 					hiddenInput.type = 'hidden';
 					hiddenInput.name = 'resource_urls';
 					hiddenInput.value = urlValue;
 					
-					// Create remove button
 					const removeButton = document.createElement('button');
 					removeButton.type = 'button';
 					removeButton.className = 'px-3 py-2 bg-red-300 text-red-800 text-sm font-bold rounded-full hover:bg-red-400 hover:text-red-900 transition-all duration-200 shadow-md border-2 border-red-400 remove-added-url-btn hover:scale-110 hover:shadow-lg';
@@ -406,43 +381,42 @@ func (f *CreateNote) Render(r *ui.Request) Node {
 					removeButton.setAttribute('data-url-index', urlIndex);
 					removeButton.textContent = '×';
 					
-					// Append elements to urlDisplay
 					urlDisplay.appendChild(urlTextDiv);
 					urlDisplay.appendChild(hiddenInput);
 					urlDisplay.appendChild(removeButton);
 					
-					// Add event listener to the remove button
 					removeButton.addEventListener('click', function() {
-						console.log('Remove button clicked');
 						urlDisplay.remove();
 					});
 					
 					displayContainer.appendChild(urlDisplay);
-					console.log('URL display element added to container');
-					
-					// Clear the input field
 					newUrlInput.value = '';
 					newUrlInput.focus();
-					console.log('Input field cleared and focused');
 				}
-				
-				// Add event listeners when DOM is ready
+
+				// Initialize form functionality
 				document.addEventListener('DOMContentLoaded', function() {
-					console.log('DOM Content Loaded - setting up event listeners');
+					// Initialize visibility handling
+					updatePermissionVisibility();
+					
+					// Handle visibility changes
+					const visibilitySelect = document.getElementById('visibility');
+					if (visibilitySelect) {
+						visibilitySelect.addEventListener('change', function() {
+							updatePermissionVisibility();
+						});
+					}
+					
+					// Initialize file validation
+					initializeFileValidation(%d, %d, %d);
 					
 					// Add event listener to the "Add Link" button
 					const addBtn = document.getElementById('add-url-btn');
-					console.log('Add button element:', addBtn);
-					
 					if (addBtn) {
 						addBtn.addEventListener('click', function(e) {
-							console.log('Add Link button clicked');
 							e.preventDefault();
 							addUrlInput();
 						});
-						console.log('Event listener added to Add Link button');
-					} else {
-						console.error('Could not find add-url-btn element');
 					}
 					
 					// Add event listener for Enter key on the input field
@@ -450,22 +424,16 @@ func (f *CreateNote) Render(r *ui.Request) Node {
 					if (newUrlInput) {
 						newUrlInput.addEventListener('keypress', function(e) {
 							if (e.key === 'Enter') {
-								console.log('Enter key pressed in URL input');
 								e.preventDefault();
 								addUrlInput();
 							}
 						});
-						console.log('Enter key listener added to URL input');
-					} else {
-						console.error('Could not find new-url-input element');
 					}
 					
 					// Add event listeners to existing remove buttons
 					const removeButtons = document.querySelectorAll('.remove-added-url-btn');
-					console.log('Found', removeButtons.length, 'existing remove buttons');
 					removeButtons.forEach(function(btn) {
 						btn.addEventListener('click', function() {
-							console.log('Existing remove button clicked');
 							btn.closest('div').remove();
 						});
 					});
@@ -477,12 +445,16 @@ func (f *CreateNote) Render(r *ui.Request) Node {
 
 // EditNote represents the form for editing an existing note
 type EditNote struct {
-	ID              int    `form:"id"`
-	Title           string `form:"title" validate:"required,min=1,max=200"`
-	Description     string `form:"description" validate:"max=500"`
-	Content         string `form:"content"`
-	Visibility      string `form:"visibility" validate:"oneof=private public"`
-	PermissionLevel string `form:"permission_level" validate:"oneof=read_only read_write read_write_approval"`
+	ID              int      `form:"id"`
+	Title           string   `form:"title" validate:"required,min=1,max=200"`
+	Description     string   `form:"description" validate:"max=500"`
+	Content         string   `form:"content"`
+	Visibility      string   `form:"visibility" validate:"oneof=private public"`
+	PermissionLevel string   `form:"permission_level" validate:"oneof=read_only read_write read_write_approval"`
+	ResourceURLs    []string `form:"resource_urls"`
+	MaxFileSize     int64
+	MaxTotalSize    int64
+	MaxFiles        int
 	form.Submission
 }
 
@@ -530,7 +502,133 @@ func (f *EditNote) Render(r *ui.Request) Node {
 			Value:     f.Content,
 		}),
 
-		// Visibility and permission settings (same as create form)
+		// Resource upload section
+		Div(
+			Class("space-y-4"),
+			H3(
+				Class("text-lg font-medium text-gray-900 mb-4"),
+				Text("📎 Edit Resources"),
+			),
+			P(
+				Class("text-sm text-gray-600 mb-6"),
+				Text("Upload files, add YouTube links, or attach documents to enhance your note."),
+			),
+
+			// File upload area
+			Div(
+				ID("file-upload-area"),
+				Class("relative border-2 border-dashed border-blue-300 bg-blue-50 rounded-lg p-6 hover:border-blue-400 hover:bg-blue-100 transition-colors cursor-pointer"),
+				Div(
+					Class("flex items-center mb-3"),
+					Div(
+						Class("w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3"),
+						Text("📁"),
+					),
+					H4(
+						Class("text-md font-medium text-blue-900"),
+						Text("Upload Files"),
+					),
+				),
+				Div(
+					Class("text-center mb-4"),
+					Div(
+						Class("text-3xl mb-2"),
+						Text("📤"),
+					),
+					P(
+						Class("text-blue-700 font-medium mb-1"),
+						Text("Drag and drop files here"),
+					),
+					P(
+						Class("text-blue-600 text-sm"),
+						Text("or click to browse files"),
+					),
+				),
+				Input(
+					Type("file"),
+					ID("file-upload"),
+					Name("files"),
+					Multiple(),
+					Accept(".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.mp4,.avi,.mov"),
+					Class("absolute inset-0 w-full h-full opacity-0 cursor-pointer"),
+				),
+				P(
+					Class("text-xs text-blue-600 mt-2 text-center"),
+					Text(fmt.Sprintf("Supported: PDF, DOC, images, videos (max %s each, %s total, %d files max)", 
+						formatFileSize(f.MaxFileSize), formatFileSize(f.MaxTotalSize), f.MaxFiles)),
+				),
+			),
+
+			// URL input section
+			Div(
+				Class("bg-green-50 border border-green-200 rounded-lg p-4"),
+				Div(
+					Class("flex items-center mb-3"),
+					Div(
+						Class("w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3"),
+						Text("🔗"),
+					),
+					H4(
+						Class("text-md font-medium text-green-900"),
+						Text("Add Web Links"),
+					),
+				),
+				Div(
+					Class("flex gap-2"),
+					Input(
+						Type("url"),
+						ID("new-url-input"),
+						Placeholder("https://example.com or YouTube link"),
+						Class("flex-1 px-3 py-2 border border-green-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"),
+					),
+					Button(
+						Type("button"),
+						ID("add-url-btn"),
+						Class("px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"),
+						Text("Add"),
+					),
+				),
+			),
+
+			// Display added URLs
+			Div(
+				ID("added-urls-container"),
+				Class("space-y-2"),
+				Group(func() []Node {
+					var nodes []Node
+					for i, url := range f.ResourceURLs {
+						if strings.TrimSpace(url) != "" {
+							nodes = append(nodes, Div(
+								Class("flex items-center justify-between bg-gray-50 border border-gray-200 rounded-md p-3"),
+								Span(
+									Class("flex-1 text-sm text-gray-700 break-all"),
+									Text(url),
+								),
+								Input(
+									Type("hidden"),
+									Name("resource_urls"),
+									Value(url),
+								),
+								Button(
+									Type("button"),
+									Class("px-3 py-2 bg-red-300 text-red-800 text-sm font-bold rounded-full hover:bg-red-400 hover:text-red-900 transition-all duration-200 shadow-md border-2 border-red-400 remove-added-url-btn hover:scale-110 hover:shadow-lg"),
+									Attr("data-url-index", fmt.Sprintf("%d", i)),
+									Attr("title", "Click to remove this link"),
+									Text("×"),
+								),
+							))
+						}
+					}
+					return nodes
+				}()),
+			),
+			P(
+				Class("text-xs text-green-600 mt-2"),
+				Text("Add YouTube videos, articles, or any web resources"),
+			),
+		),
+
+		// Visibility and permission settings
 		Div(
 			Class("grid grid-cols-1 md:grid-cols-2 gap-4"),
 
@@ -558,7 +656,7 @@ func (f *EditNote) Render(r *ui.Request) Node {
 				),
 			),
 
-			// Permission level field
+			// Permission level field (only shown for public notes)
 			Div(
 				ID("permission-level-container"),
 				Class(func() string {
@@ -607,20 +705,148 @@ func (f *EditNote) Render(r *ui.Request) Node {
 
 		CSRF(r),
 
-		// JavaScript for dynamic visibility handling
+		// Inline JavaScript for note form functionality
 		Script(
-			Text(`
-				document.getElementById('visibility').addEventListener('change', function() {
+			Attr("type", "text/javascript"),
+			Raw(fmt.Sprintf(`
+				// Visibility handling for permission levels
+				function updatePermissionVisibility() {
+					const visibilitySelect = document.getElementById('visibility');
 					const permissionContainer = document.getElementById('permission-level-container');
-					if (this.value === 'public') {
-						permissionContainer.classList.remove('hidden');
-						permissionContainer.classList.add('block');
-					} else {
-						permissionContainer.classList.remove('block');
-						permissionContainer.classList.add('hidden');
+					
+					if (visibilitySelect && permissionContainer) {
+						if (visibilitySelect.value === 'public') {
+							permissionContainer.classList.remove('hidden');
+							permissionContainer.classList.add('block');
+						} else {
+							permissionContainer.classList.add('hidden');
+							permissionContainer.classList.remove('block');
+						}
 					}
+				}
+
+				// File upload validation
+				function initializeFileValidation(maxFiles, maxFileSize, maxTotalSize) {
+					const fileInput = document.getElementById('file-upload');
+					if (!fileInput) return;
+					
+					fileInput.addEventListener('change', function(e) {
+						const files = e.target.files;
+						
+						if (files.length > maxFiles) {
+							alert('Maximum ' + maxFiles + ' files allowed. Please select fewer files.');
+							e.target.value = '';
+							return;
+						}
+						
+						let totalSize = 0;
+						for (let i = 0; i < files.length; i++) {
+							if (files[i].size > maxFileSize) {
+								const maxSizeMB = Math.round(maxFileSize / (1024 * 1024));
+								alert('File "' + files[i].name + '" exceeds ' + maxSizeMB + 'MB limit. Please choose a smaller file.');
+								e.target.value = '';
+								return;
+							}
+							totalSize += files[i].size;
+						}
+						
+						if (totalSize > maxTotalSize) {
+							const maxTotalMB = Math.round(maxTotalSize / (1024 * 1024));
+							alert('Total file size exceeds ' + maxTotalMB + 'MB limit. Please select smaller files.');
+							e.target.value = '';
+							return;
+						}
+					});
+				}
+
+				// URL management functionality
+				function addUrlInput() {
+					const newUrlInput = document.getElementById('new-url-input');
+					const displayContainer = document.getElementById('url-display-container');
+					
+					if (!newUrlInput || !displayContainer) return;
+					
+					const urlValue = newUrlInput.value.trim();
+					if (!urlValue) return;
+					
+					const urlIndex = Date.now();
+					const urlDisplay = document.createElement('div');
+					urlDisplay.className = 'flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-md group hover:bg-gray-100 transition-colors';
+					
+					const urlTextDiv = document.createElement('div');
+					urlTextDiv.className = 'flex-1 text-sm text-gray-700 break-all';
+					urlTextDiv.textContent = urlValue;
+					
+					const hiddenInput = document.createElement('input');
+					hiddenInput.type = 'hidden';
+					hiddenInput.name = 'resource_urls';
+					hiddenInput.value = urlValue;
+					
+					const removeButton = document.createElement('button');
+					removeButton.type = 'button';
+					removeButton.className = 'px-3 py-2 bg-red-300 text-red-800 text-sm font-bold rounded-full hover:bg-red-400 hover:text-red-900 transition-all duration-200 shadow-md border-2 border-red-400 remove-added-url-btn hover:scale-110 hover:shadow-lg';
+					removeButton.setAttribute('title', 'Click to remove this link');
+					removeButton.setAttribute('data-url-index', urlIndex);
+					removeButton.textContent = '×';
+					
+					urlDisplay.appendChild(urlTextDiv);
+					urlDisplay.appendChild(hiddenInput);
+					urlDisplay.appendChild(removeButton);
+					
+					removeButton.addEventListener('click', function() {
+						urlDisplay.remove();
+					});
+					
+					displayContainer.appendChild(urlDisplay);
+					newUrlInput.value = '';
+					newUrlInput.focus();
+				}
+
+				// Initialize form functionality
+				document.addEventListener('DOMContentLoaded', function() {
+					// Initialize visibility handling
+					updatePermissionVisibility();
+					
+					// Handle visibility changes
+					const visibilitySelect = document.getElementById('visibility');
+					if (visibilitySelect) {
+						visibilitySelect.addEventListener('change', function() {
+							updatePermissionVisibility();
+						});
+					}
+					
+					// Initialize file validation
+					initializeFileValidation(%d, %d, %d);
+					
+					// Add event listener to the "Add Link" button
+					const addBtn = document.getElementById('add-url-btn');
+					if (addBtn) {
+						addBtn.addEventListener('click', function(e) {
+							e.preventDefault();
+							addUrlInput();
+						});
+					}
+					
+					// Add event listener for Enter key on the input field
+					const newUrlInput = document.getElementById('new-url-input');
+					if (newUrlInput) {
+						newUrlInput.addEventListener('keypress', function(e) {
+							if (e.key === 'Enter') {
+								e.preventDefault();
+								addUrlInput();
+							}
+						});
+					}
+					
+					// Add event listeners to existing remove buttons
+					const removeButtons = document.querySelectorAll('.remove-added-url-btn');
+					removeButtons.forEach(function(btn) {
+						btn.addEventListener('click', function() {
+							btn.closest('div').remove();
+						});
+					});
 				});
-			`),
+			`, f.MaxFiles, f.MaxFileSize, f.MaxTotalSize)),
 		),
 	)
 }
