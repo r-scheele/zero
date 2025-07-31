@@ -128,7 +128,7 @@ func (f *ChangePassword) Render(r *ui.Request) Node {
 		ID("change-password"),
 		Method(http.MethodPost),
 		HxBoost(),
-		Action(r.Path(routenames.ProfileUpdate)+"/password"),
+		Action("/profile/change-password"),
 		Class("space-y-6"),
 		FlashMessages(r),
 

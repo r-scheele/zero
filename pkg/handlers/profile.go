@@ -320,6 +320,11 @@ func (h *Profile) ChangePasswordSubmit(ctx echo.Context) error {
 		return h.ChangePasswordPage(ctx)
 	}
 
+	// Check if there are any field errors before proceeding
+	if !input.IsValid() {
+		return h.ChangePasswordPage(ctx)
+	}
+
 	// Hash the new password before storing
 	hashedPassword, err := h.container.Auth.HashPassword(input.NewPassword)
 	if err != nil {
@@ -337,7 +342,7 @@ func (h *Profile) ChangePasswordSubmit(ctx echo.Context) error {
 	}
 
 	msg.Success(ctx, "Password updated successfully!")
-	return redirect.New(ctx).Route(routenames.Profile).Go()
+	return h.ChangePasswordPage(ctx)
 }
 
 func (h *Profile) DeactivateAccountPage(ctx echo.Context) error {

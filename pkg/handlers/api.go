@@ -170,11 +170,19 @@ func (h *API) Register(ctx echo.Context) error {
 		})
 	}
 
+	// Hash the password before storing
+	hashedPassword, err := h.auth.HashPassword(input.Password)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "Failed to process password",
+		})
+	}
+
 	// Create new user
 	u, err := h.orm.User.Create().
 		SetName(input.Name).
 		SetPhoneNumber(strings.TrimSpace(input.PhoneNumber)).
-		SetPassword(input.Password).
+		SetPassword(hashedPassword).
 		SetRegistrationMethod("mobile").
 		SetVerificationCode(h.generateTwoDigitCode()).
 		Save(ctx.Request().Context())
@@ -316,9 +324,17 @@ func (h *API) ResetPassword(ctx echo.Context) error {
 	// Get user from context (should be set by middleware)
 	u := ctx.Get(pkgcontext.UserKey).(*ent.User)
 
+	// Hash the new password before storing
+	hashedPassword, err := h.auth.HashPassword(input.Password)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "Failed to process password",
+		})
+	}
+
 	// Update password
-	_, err := u.Update().
-		SetPassword(input.Password).
+	_, err = u.Update().
+		SetPassword(hashedPassword).
 		Save(ctx.Request().Context())
 
 	if err != nil {

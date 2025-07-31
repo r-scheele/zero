@@ -36,6 +36,12 @@ func main() {
 		invalid("failed to generate a random password")
 	}
 
+	// Hash the password before storing
+	hashedPw, err := c.Auth.HashPassword(pw)
+	if err != nil {
+		invalid("failed to generate a random password")
+	}
+
 	// Create the admin user.
 	err = c.ORM.User.
 		Create().
@@ -43,7 +49,7 @@ func main() {
 		SetName("Admin").
 		SetAdmin(true).
 		SetVerified(true).
-		SetPassword(pw).
+		SetPassword(hashedPw).
 		SetRegistrationMethod(user.RegistrationMethodWeb).
 		Exec(context.Background())
 
