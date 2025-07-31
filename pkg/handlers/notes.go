@@ -233,13 +233,15 @@ func (h *Notes) CreateNoteSubmit(ctx echo.Context) error {
 		}
 	}
 	
-	// Process URL resource
-	if strings.TrimSpace(input.ResourceURL) != "" {
-		resourceURL := strings.TrimSpace(input.ResourceURL)
-		_, err := h.notesService.AddURLResource(ctx.Request().Context(), createdNote.ID, userID, resourceURL, "Web Resource")
-		if err != nil {
-			// Log error but don't fail the entire operation
-			msg.Error(ctx, "Failed to add URL resource: "+err.Error())
+	// Process URL resources
+	for _, resourceURL := range input.ResourceURLs {
+		if strings.TrimSpace(resourceURL) != "" {
+			cleanURL := strings.TrimSpace(resourceURL)
+			_, err := h.notesService.AddURLResource(ctx.Request().Context(), createdNote.ID, userID, cleanURL, "Web Resource")
+			if err != nil {
+				// Log error but don't fail the entire operation
+				msg.Error(ctx, "Failed to add URL resource: "+err.Error())
+			}
 		}
 	}
 	

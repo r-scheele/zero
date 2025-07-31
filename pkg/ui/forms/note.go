@@ -3,6 +3,7 @@ package forms
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/r-scheele/zero/pkg/form"
 	"github.com/r-scheele/zero/pkg/routenames"
@@ -28,13 +29,12 @@ func formatFileSize(bytes int64) string {
 
 // CreateNote represents the form for creating a new note
 type CreateNote struct {
-	Title           string `form:"title" validate:"required,min=1,max=200"`
-	Description     string `form:"description" validate:"max=500"`
-	Content         string `form:"content"`
-	Visibility      string `form:"visibility" validate:"oneof=private public"`
-	PermissionLevel string `form:"permission_level" validate:"oneof=read_only read_write read_write_approval"`
-	ResourceURL     string `form:"resource_url"`
-	// File upload configuration
+	Title           string   `form:"title" validate:"required,min=1,max=200"`
+	Description     string   `form:"description" validate:"max=500"`
+	Content         string   `form:"content"`
+	Visibility      string   `form:"visibility" validate:"oneof=private public"`
+	PermissionLevel string   `form:"permission_level" validate:"oneof=read_only read_write read_write_approval"`
+	ResourceURLs    []string `form:"resource_urls"`
 	MaxFileSize  int64
 	MaxTotalSize int64
 	MaxFiles     int
@@ -214,7 +214,7 @@ func (f *CreateNote) Render(r *ui.Request) Node {
 				),
 			),
 
-			// URL input for YouTube/web links - Green theme
+			// Multiple URL inputs for YouTube/web links - Green theme
 			Div(
 				Class("border-2 border-dashed border-green-300 bg-green-50 rounded-lg p-6"),
 				Div(
@@ -228,14 +228,14 @@ func (f *CreateNote) Render(r *ui.Request) Node {
 						Text("Add Links"),
 					),
 				),
+				// New URL input form
 				Div(
-					Class("grid grid-cols-1 md:grid-cols-3 gap-2"),
+					Class("flex gap-2 mb-3"),
 					Input(
 						Type("url"),
-						ID("resource-url"),
-						Name("resource_url"),
+						ID("new-url-input"),
 						Placeholder("https://youtube.com/watch?v=... or any URL"),
-						Class("px-3 py-2 border border-green-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white md:col-span-2"),
+						Class("flex-1 px-3 py-2 border border-green-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"),
 					),
 					Button(
 						Type("button"),
@@ -243,6 +243,40 @@ func (f *CreateNote) Render(r *ui.Request) Node {
 						Class("px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium"),
 						Text("Add Link"),
 					),
+				),
+				
+				// Display previously added URLs (read-only) - now below the input form
+				Div(
+					ID("added-urls-display"),
+					Class("space-y-2 mb-4"),
+					Group(func() []Node {
+						var nodes []Node
+						for i, url := range f.ResourceURLs {
+							if strings.TrimSpace(url) != "" {
+								nodes = append(nodes, Div(
+									Class("flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-md group hover:bg-gray-100 transition-colors"),
+									Div(
+										Class("flex-1 text-sm text-gray-700 break-all"),
+										Text(url),
+									),
+									// Hidden input to preserve the URL value
+									Input(
+										Type("hidden"),
+										Name("resource_urls"),
+										Value(url),
+									),
+									Button(
+											Type("button"),
+											Class("px-3 py-2 bg-red-300 text-red-800 text-sm font-bold rounded-full hover:bg-red-400 hover:text-red-900 transition-all duration-200 shadow-md border-2 border-red-400 remove-added-url-btn hover:scale-110 hover:shadow-lg"),
+											Attr("data-url-index", fmt.Sprintf("%d", i)),
+											Attr("title", "Click to remove this link"),
+											Text("×"),
+										),
+								))
+							}
+						}
+						return nodes
+					}()),
 				),
 				P(
 					Class("text-xs text-green-600 mt-2"),
@@ -263,9 +297,10 @@ func (f *CreateNote) Render(r *ui.Request) Node {
 
 		CSRF(r),
 
-		// JavaScript for dynamic visibility handling and file validation
+		// JavaScript for dynamic visibility handling, file validation, and URL management
 		Script(
-			Text(fmt.Sprintf(`
+			Attr("type", "text/javascript"),
+			Raw(fmt.Sprintf(`
 				// Visibility handling
 				document.getElementById('visibility').addEventListener('change', function() {
 					const permissionContainer = document.getElementById('permission-level-container');
@@ -314,6 +349,126 @@ func (f *CreateNote) Render(r *ui.Request) Node {
 						const sizeInMB = (totalSize / (1024 * 1024)).toFixed(2);
 						console.log('Selected ' + files.length + ' files (' + sizeInMB + 'MB total)');
 					}
+				});
+				
+				// URL management functionality
+				function addUrlInput() {
+					console.log('addUrlInput function called');
+					const newUrlInput = document.getElementById('new-url-input');
+					console.log('newUrlInput element:', newUrlInput);
+					
+					if (!newUrlInput) {
+						console.error('Could not find new-url-input element');
+						return;
+					}
+					
+					const urlValue = newUrlInput.value.trim();
+					console.log('URL value:', urlValue);
+					
+					// Check if input has a value
+					if (!urlValue) {
+						console.log('No URL value, focusing input');
+						newUrlInput.focus();
+						return;
+					}
+					
+					// Add the URL to the display area
+					const displayContainer = document.getElementById('added-urls-display');
+					console.log('displayContainer element:', displayContainer);
+					
+					if (!displayContainer) {
+						console.error('Could not find added-urls-display element');
+						return;
+					}
+					
+					const urlIndex = displayContainer.children.length;
+					console.log('Creating URL display element, index:', urlIndex);
+					
+					const urlDisplay = document.createElement('div');
+					urlDisplay.className = 'flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-md group hover:bg-gray-100 transition-colors';
+					
+					// Create URL text div
+					const urlTextDiv = document.createElement('div');
+					urlTextDiv.className = 'flex-1 text-sm text-gray-700 break-all';
+					urlTextDiv.textContent = urlValue;
+					
+					// Create hidden input
+					const hiddenInput = document.createElement('input');
+					hiddenInput.type = 'hidden';
+					hiddenInput.name = 'resource_urls';
+					hiddenInput.value = urlValue;
+					
+					// Create remove button
+					const removeButton = document.createElement('button');
+					removeButton.type = 'button';
+					removeButton.className = 'px-3 py-2 bg-red-300 text-red-800 text-sm font-bold rounded-full hover:bg-red-400 hover:text-red-900 transition-all duration-200 shadow-md border-2 border-red-400 remove-added-url-btn hover:scale-110 hover:shadow-lg';
+					removeButton.setAttribute('title', 'Click to remove this link');
+					removeButton.setAttribute('data-url-index', urlIndex);
+					removeButton.textContent = '×';
+					
+					// Append elements to urlDisplay
+					urlDisplay.appendChild(urlTextDiv);
+					urlDisplay.appendChild(hiddenInput);
+					urlDisplay.appendChild(removeButton);
+					
+					// Add event listener to the remove button
+					removeButton.addEventListener('click', function() {
+						console.log('Remove button clicked');
+						urlDisplay.remove();
+					});
+					
+					displayContainer.appendChild(urlDisplay);
+					console.log('URL display element added to container');
+					
+					// Clear the input field
+					newUrlInput.value = '';
+					newUrlInput.focus();
+					console.log('Input field cleared and focused');
+				}
+				
+				// Add event listeners when DOM is ready
+				document.addEventListener('DOMContentLoaded', function() {
+					console.log('DOM Content Loaded - setting up event listeners');
+					
+					// Add event listener to the "Add Link" button
+					const addBtn = document.getElementById('add-url-btn');
+					console.log('Add button element:', addBtn);
+					
+					if (addBtn) {
+						addBtn.addEventListener('click', function(e) {
+							console.log('Add Link button clicked');
+							e.preventDefault();
+							addUrlInput();
+						});
+						console.log('Event listener added to Add Link button');
+					} else {
+						console.error('Could not find add-url-btn element');
+					}
+					
+					// Add event listener for Enter key on the input field
+					const newUrlInput = document.getElementById('new-url-input');
+					if (newUrlInput) {
+						newUrlInput.addEventListener('keypress', function(e) {
+							if (e.key === 'Enter') {
+								console.log('Enter key pressed in URL input');
+								e.preventDefault();
+								addUrlInput();
+							}
+						});
+						console.log('Enter key listener added to URL input');
+					} else {
+						console.error('Could not find new-url-input element');
+					}
+					
+					// Add event listeners to existing remove buttons
+					const removeButtons = document.querySelectorAll('.remove-added-url-btn');
+					console.log('Found', removeButtons.length, 'existing remove buttons');
+					removeButtons.forEach(function(btn) {
+						btn.addEventListener('click', function() {
+							console.log('Existing remove button clicked');
+							btn.closest('div').remove();
+						});
+					});
 				});
 			`, f.MaxFiles, f.MaxFileSize, f.MaxTotalSize)),
 		),
